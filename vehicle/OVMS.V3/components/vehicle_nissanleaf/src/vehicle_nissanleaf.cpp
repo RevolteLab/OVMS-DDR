@@ -55,6 +55,7 @@ static const char *TAG = "v-nissanleaf";
 #define BROADCAST_RXID            0x0
 // other pairs 743/763 744/764 745/765 784/78C 792/793 79D/7BD
 #define VIN_PID                   0x81
+#define DIAG_PID                  0xC0
 #define QC_COUNT_PID              0x1203
 #define L1L2_COUNT_PID            0x1205
 
@@ -68,11 +69,12 @@ enum poll_states
 
 static const OvmsPoller::poll_pid_t obdii_polls[] =
   {
-    // BUS 2
-    { CHARGER_TXID, CHARGER_RXID, VEHICLE_POLL_TYPE_OBDIIGROUP, VIN_PID, { 0, 60, 60, 60 }, 2, ISOTP_STD },          // VIN [19]
+    // BUS 2   
     { CHARGER_TXID, CHARGER_RXID, VEHICLE_POLL_TYPE_OBDIIEXTENDED, QC_COUNT_PID, { 0, 900, 0, 0 }, 2, ISOTP_STD },   // QC [2]
     { CHARGER_TXID, CHARGER_RXID, VEHICLE_POLL_TYPE_OBDIIEXTENDED, L1L2_COUNT_PID, { 0, 900, 0, 0 }, 2, ISOTP_STD }, // L0/L1/L2 [2]
     // BUS 1
+    { CHARGER_TXID, CHARGER_RXID, VEHICLE_POLL_TYPE_OBDIISESSION, DIAG_PID, { 0, 1, 1, 1}, 1, ISOTP_STD },    // VIN [19]
+    { CHARGER_TXID, CHARGER_RXID, VEHICLE_POLL_TYPE_OBDIIGROUP, VIN_PID, { 0, 10, 10, 10 }, 1, ISOTP_STD },    // VIN [19]
     { BMS_TXID, BMS_RXID, VEHICLE_POLL_TYPE_OBDIIGROUP, 0x01, { 0, 60, 60, 60 }, 1, ISOTP_STD }, // bat [39/41]
     { BMS_TXID, BMS_RXID, VEHICLE_POLL_TYPE_OBDIIGROUP, 0x02, { 0, 60, 10, 60 }, 1, ISOTP_STD }, // battery voltages [196]
     { BMS_TXID, BMS_RXID, VEHICLE_POLL_TYPE_OBDIIGROUP, 0x06, { 0, 60, 60, 60 }, 1, ISOTP_STD }, // battery shunts [96]
@@ -844,7 +846,7 @@ void OvmsVehicleNissanLeaf::IncomingPollReply(const OvmsPoller::poll_job_t &job,
     }
   }
 
-void OvmsVehicleNissanLeaf::IncomingFrameCan1(CAN_frame_t* p_frame)
+void OvmsVehicleNissanLeaf::IncomingFrameCan2(CAN_frame_t* p_frame)
   { // CAN1 is connected to EV-CAN
   uint8_t *d = p_frame->data.u8;
 
@@ -1470,7 +1472,7 @@ void OvmsVehicleNissanLeaf::IncomingFrameCan1(CAN_frame_t* p_frame)
     }
   }
 
-void OvmsVehicleNissanLeaf::IncomingFrameCan2(CAN_frame_t* p_frame)
+void OvmsVehicleNissanLeaf::IncomingFrameCan1(CAN_frame_t* p_frame)
   { // CAN2 is connected to CAR-CAN
   uint8_t *d = p_frame->data.u8;
 
@@ -1612,10 +1614,12 @@ void OvmsVehicleNissanLeaf::IncomingFrameCan2(CAN_frame_t* p_frame)
           break;
         case 3: // ready to drive, is triggered on unlock
           StandardMetrics.ms_v_env_awake->SetValue(true);
-          if (StandardMetrics.ms_v_env_footbrake->AsFloat() > 0) //check footbrake to avoid false positive
+          /*if (StandardMetrics.ms_v_env_footbrake->AsFloat() > 0) //check footbrake to avoid false positive
             {
+                ESP_LOGD(TAG, "Turning on");
+                vehicle_nissanleaf_car_on(true);
+            }*/
             vehicle_nissanleaf_car_on(true);
-            }
           break;
         }
 
