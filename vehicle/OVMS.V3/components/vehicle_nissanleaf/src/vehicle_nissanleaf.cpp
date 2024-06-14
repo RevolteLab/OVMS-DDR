@@ -792,8 +792,8 @@ void OvmsVehicleNissanLeaf::PollReply_VIN(uint8_t reply_data[], uint16_t reply_l
   //  < 0x79a 61 81
   // [ 0..16] 53 4a 4e 46 41 41 5a 45 30 55 3X 3X 3X 3X 3X 3X 3X
   // [17..18] 00 00
-  char buf[19];
-  strncpy(buf,(char*)reply_data,reply_len);
+  char buf[19] = {'\0'};
+  strncpy(buf,(char*)reply_data, 17);   // Hard coded data length for VIN discarding the two last bytes (unknown data)
   string strbuf(buf);
   std::replace(strbuf.begin(), strbuf.end(), 0x1b, 0x20); // remove ESC character returned by AZE0 models
   StandardMetrics.ms_v_vin->SetValue(strbuf); //(char*)reply_data
