@@ -174,6 +174,7 @@ class OvmsVehicleNissanLeaf : public OvmsVehicle
     void PollReply_BMS_Volt(uint8_t reply_data[], uint16_t reply_len);
     void PollReply_BMS_Shunt(uint8_t reply_data[], uint16_t reply_len);
     void PollReply_BMS_Temp(uint8_t reply_data[], uint16_t reply_len);
+    void PollReply_DiagEnable(uint8_t reply_data[], uint16_t reply_len);
 
     TimerHandle_t m_remoteCommandTimer;
     TimerHandle_t m_ccDisableTimer;
@@ -221,6 +222,7 @@ class OvmsVehicleNissanLeaf : public OvmsVehicle
     OvmsMetricInt *m_climate_fan_speed_limit;
     OvmsMetricFloat *m_climate_setpoint;
     OvmsMetricBool *m_climate_auto;
+    OvmsMetricBool *m_diag_mode;
     
     int    cfg_ev_request_port = DEFAULT_PIN_EV;        // EGPIO port number for EV SYSTEM ACTIVATION REQUEST
     int    cfg_allowed_rangedrop;                       // Allowed drop of range after charging

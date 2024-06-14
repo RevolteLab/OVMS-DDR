@@ -188,6 +188,7 @@ OvmsVehicleNissanLeaf::OvmsVehicleNissanLeaf()
   m_charge_user_notified = MyMetrics.InitString("xnl.v.c.event.notification", SM_STALE_HIGH, 0);
   m_charge_event_reason = MyMetrics.InitString("xnl.v.c.event.reason", SM_STALE_HIGH, 0);
   m_climate_auto = MyMetrics.InitBool("xnl.v.e.hvac.auto", SM_STALE_MIN, false);
+  m_diag_mode = MyMetrics.InitBool("xnl.v.e.diag", SM_STALE_MIN, false);
   MyMetrics.InitBool("v.e.on", SM_STALE_MIN, false);
   MyMetrics.InitBool("v.e.awake", SM_STALE_MID, false);
   MyMetrics.InitBool("v.e.locked", SM_STALE_MID, false);
@@ -595,6 +596,11 @@ bool OvmsVehicleNissanLeaf::ObdRequest(uint16_t txid, uint16_t rxid, uint32_t re
   return (rxok == pdTRUE);
   }
 
+void OvmsVehicleNissanLeaf::PollReply_DiagEnable(uint8_t reply_data[], uint16_t reply_len){
+        //TODO Fix, currently doing Nothing because reply_len == 0
+        return;
+}
+
 void OvmsVehicleNissanLeaf::PollReply_Battery(uint8_t reply_data[], uint16_t reply_len)
   {
   if (reply_len != 39 &&    // 24 KWh Leafs
@@ -832,6 +838,9 @@ void OvmsVehicleNissanLeaf::IncomingPollReply(const OvmsPoller::poll_job_t &job,
         break;
       case CHARGER_RXID<<16 | VIN_PID: // VIN
         PollReply_VIN(buf, rxbuf.size());
+        break;
+      case CHARGER_RXID << 16 | DIAG_PID:  //diag mode
+        PollReply_DiagEnable(buf, rxbuf.size());
         break;
       default:
         ESP_LOGI(TAG, "IncomingPollReply: unknown reply module|pid=%#" PRIx32 " len=%d", id_pid, rxbuf.size());
