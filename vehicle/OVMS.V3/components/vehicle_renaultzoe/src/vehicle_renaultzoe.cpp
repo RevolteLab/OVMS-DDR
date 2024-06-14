@@ -56,6 +56,7 @@ static const OvmsPoller::poll_pid_t renault_zoe_polls[] = {
   //{ 0x7e4, 0x7ec, VEHICLE_POLL_TYPE_OBDIIEXTENDED, 0x2002, { 0, 10, 10, 10 } },  // SOC
   //{ 0x7e4, 0x7ec, VEHICLE_POLL_TYPE_OBDIIEXTENDED, 0x2006, { 0, 10, 10, 10 } },  // Odometer
   { 0x7e4, 0x7ec, VEHICLE_POLL_TYPE_OBDIIEXTENDED, 0x3203, { 0, 10, 1, 5 }, 0, ISOTP_STD},  // Battery Voltage
+  { PID_ECU_TX, PID_ECU_RX, VEHICLE_POLL_TYPE_OBDIISESSION, POLL_SID_DIAG, { 0, 1, 1, 1 }, 0, ISOTP_STD },  // DIAG
   { PID_ECU_TX, PID_ECU_RX, VEHICLE_POLL_TYPE_OBDIIGROUP, POLL_SID_VIN, { 0, 30, 30, 30 }, 0, ISOTP_STD },  // VIN
   { 0x7e4, 0x7ec, VEHICLE_POLL_TYPE_OBDIIEXTENDED, 0x3204, { 0, 10, 1, 5 }, 0, ISOTP_STD },  // Battery Current
   //{ 0x7e4, 0x7ec, VEHICLE_POLL_TYPE_OBDIIEXTENDED, 0x3028, { 0, 10, 10, 10 } },  // 12Battery Current
@@ -131,6 +132,7 @@ OvmsVehicleRenaultZoe::OvmsVehicleRenaultZoe() {
   mt_available_energy     = MyMetrics.InitFloat("xrz.v.avail.energy", SM_STALE_MID, 0, kWh);
   mt_heatwater_temp       = MyMetrics.InitFloat("xrz.v.heatwater.temp", SM_STALE_MID, 0, Celcius);
   mt_main_power_consumed  = MyMetrics.InitFloat("xrz.c.main.power.consumed", SM_STALE_MID, 0, kWh);
+  mt_diag                 = MyMetrics.InitBool("xrz.v.diag", SM_STALE_MID);
 	
 	// init commands:
   cmd_zoe = MyCommandApp.RegisterCommand("zoe", "Renault Zoe/Kangoo");
@@ -881,6 +883,11 @@ void OvmsVehicleRenaultZoe::PollReply_VIN (const char* data, uint16_t reply_len)
         StandardMetrics.ms_v_vin->SetValue(strbuf);     // Pushing the VIN to the metrics
 }
 
+void OvmsVehicleRenaultZoe::PollReply_Diag (const char* data, uint16_t reply_len)
+{
+        //Do nothing since length is O
+        return;
+}
 /**
  * Handle incoming polls from the EPS Computer
  */
