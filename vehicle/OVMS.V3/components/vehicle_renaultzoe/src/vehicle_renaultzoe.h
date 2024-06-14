@@ -62,6 +62,15 @@
 #define POLLSTATE_RUNNING			PollSetState(2);
 #define POLLSTATE_CHARGING		PollSetState(3);
 
+<<<<<<< HEAD
+=======
+#define POLL_SID_DIAG 0xC0
+#define POLL_SID_VIN 0x81
+
+#define PID_ECU_RX 0x772
+#define PID_ECU_TX 0x752
+
+>>>>>>> 4fcefc1d (RD-2 : fixed the VIN reading)
 #define RZ_CANDATA_TIMEOUT 10
 
 using namespace std;
@@ -74,7 +83,12 @@ class OvmsVehicleRenaultZoe : public OvmsVehicle {
 		static OvmsVehicleRenaultZoe* GetInstance(OvmsWriter* writer=NULL);
 		void IncomingFrameCan1(CAN_frame_t* p_frame) override;
 		void IncomingPollReply(const OvmsPoller::poll_job_t &job, uint8_t* data, uint8_t length) override;
+<<<<<<< HEAD
 
+=======
+                void PollReply_Diag(const char* data, uint16_t reply_len);
+                void PollReply_VIN(const char* data, uint16_t reply_len);
+>>>>>>> 4fcefc1d (RD-2 : fixed the VIN reading)
 	protected:
 		void IncomingEPS(uint16_t type, uint16_t pid, const char* data, uint16_t len);
 		void IncomingEVC(uint16_t type, uint16_t pid, const char* data, uint16_t len);

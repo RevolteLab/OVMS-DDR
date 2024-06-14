@@ -56,6 +56,7 @@ static const OvmsPoller::poll_pid_t renault_zoe_polls[] = {
   //{ 0x7e4, 0x7ec, VEHICLE_POLL_TYPE_OBDIIEXTENDED, 0x2002, { 0, 10, 10, 10 } },  // SOC
   //{ 0x7e4, 0x7ec, VEHICLE_POLL_TYPE_OBDIIEXTENDED, 0x2006, { 0, 10, 10, 10 } },  // Odometer
   { 0x7e4, 0x7ec, VEHICLE_POLL_TYPE_OBDIIEXTENDED, 0x3203, { 0, 10, 1, 5 }, 0, ISOTP_STD},  // Battery Voltage
+  { PID_ECU_TX, PID_ECU_RX, VEHICLE_POLL_TYPE_OBDIIGROUP, POLL_SID_VIN, { 0, 30, 30, 30 }, 0, ISOTP_STD },  // VIN
   { 0x7e4, 0x7ec, VEHICLE_POLL_TYPE_OBDIIEXTENDED, 0x3204, { 0, 10, 1, 5 }, 0, ISOTP_STD },  // Battery Current
   //{ 0x7e4, 0x7ec, VEHICLE_POLL_TYPE_OBDIIEXTENDED, 0x3028, { 0, 10, 10, 10 } },  // 12Battery Current
   //7ec,24,39,.005,0,0,kwh,22320C,62320C,ff,Available discharge Energy
@@ -762,6 +763,7 @@ void OvmsVehicleRenaultZoe::IncomingFrameCan1(CAN_frame_t* p_frame) {
       break;
     case 0x69f:
       // 69f,0,31,1,0,0,,,,ff,Car Serial N°
+      /*
       if (!zoe_vin[0]) // we only need to process this once
       {
         zoe_vin[0] = '0' + CAN_NIB(6);
@@ -773,7 +775,7 @@ void OvmsVehicleRenaultZoe::IncomingFrameCan1(CAN_frame_t* p_frame) {
         zoe_vin[6] = '0' + CAN_NIB(0);
         zoe_vin[7] = 0;
         StandardMetrics.ms_v_vin->SetValue((string) zoe_vin);
-      }
+      }*/
       break;
     case 0x6f8:
       // 6f8,0,1,1,0,0,,,,ff,USM Refuse to Sleep
@@ -844,7 +846,39 @@ void OvmsVehicleRenaultZoe::IncomingPollReply(const OvmsPoller::poll_job_t &job,
     case 0x77e:
       IncomingPEB(job.type, job.pid, rxbuf.data(), rxbuf.size());
       break;
+
+    case PID_ECU_RX:
+      
+      switch (job.entry.pid) {
+        case POLL_SID_VIN:
+          PollReply_VIN(rxbuf.data(), rxbuf.length());
+          break;
+        case POLL_SID_DIAG:
+          PollReply_Diag(rxbuf.data(), rxbuf.length());
+          break;
+      }
+
+      break;
   }
+}
+
+void OvmsVehicleRenaultZoe::PollReply_Diag (const char* data, uint16_t reply_len)
+{
+        //Do nothing since length is O
+        return;
+}
+void OvmsVehicleRenaultZoe::PollReply_VIN (const char* data, uint16_t reply_len)
+{
+        //Checking if the received VIN in correct in length
+        if (reply_len != 19) {
+                ESP_LOGI(TAG, "Wrong vin length = %d", reply_len);
+                return;
+        }
+
+        //Copying the recieved VIN to the metric
+        std::string strbuf(data, reply_len);            // Copying the data in the string (all 19 characters)
+        strbuf = strbuf.substr(0, 17);                  // Removing the useless characters at the end of string
+        StandardMetrics.ms_v_vin->SetValue(strbuf);     // Pushing the VIN to the metrics
 }
 
 /**
