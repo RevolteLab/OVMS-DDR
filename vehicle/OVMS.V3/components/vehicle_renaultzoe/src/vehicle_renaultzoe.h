@@ -63,6 +63,7 @@
 #define POLLSTATE_CHARGING		PollSetState(3);
 
 #define POLL_SID_DIAG 0xC0
+#define POLL_SID_VIN 0x81
 
 #define PID_ECU_RX 0x772
 #define PID_ECU_TX 0x752
@@ -80,6 +81,7 @@ class OvmsVehicleRenaultZoe : public OvmsVehicle {
 		void IncomingFrameCan1(CAN_frame_t* p_frame) override;
 		void IncomingPollReply(const OvmsPoller::poll_job_t &job, uint8_t* data, uint8_t length) override;
                 void PollReply_Diag(const char* data, uint16_t reply_len);
+                void PollReply_VIN(const char* data, uint16_t reply_len);
 	protected:
 		void IncomingEPS(uint16_t type, uint16_t pid, const char* data, uint16_t len);
 		void IncomingEVC(uint16_t type, uint16_t pid, const char* data, uint16_t len);
