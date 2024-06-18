@@ -128,12 +128,10 @@ static const char *TAG = "v-mitsubishi";
 // Pollstate 2 - car is charging
 static const OvmsPoller::poll_pid_t vehicle_mitsubishi_polls[] =
   {
-    { 0x761, 0x762, VEHICLE_POLL_TYPE_OBDIIGROUP,  0x01, 		{       0,  10,   10 }, 0, ISOTP_STD }, 	// cac
-    { 0x761, 0x762, VEHICLE_POLL_TYPE_OBDIIGROUP,  0x02, 		{       0,   1,    1 }, 0, ISOTP_STD }, 	// cell voltage
-    { 0x761, 0x762, VEHICLE_POLL_TYPE_OBDIIGROUP,  0x03, 		{       0,   1,    1 }, 0, ISOTP_STD }, 	// cell temp
-    { 0x765, 0x766, VEHICLE_POLL_TYPE_OBDIIGROUP,  0x01, 		{       0,   1,    0 }, 0, ISOTP_STD },   // OBC
-    { 0x771, 0x772, VEHICLE_POLL_TYPE_OBDIIGROUP,  0x13, 		{       0,   1,    1 }, 0, ISOTP_STD },   //external/internal temp
-    { 0x782, 0x783, VEHICLE_POLL_TYPE_OBDIIGROUP,  0xCE, 		{       0,   5,    0 }, 0, ISOTP_STD },   //Trip A/B
+    { 0x761, 0x762, VEHICLE_POLL_TYPE_OBDIIGROUP,  0x01, 		{       0,   5,    5 }, 0, ISOTP_STD }, 	// Calculated Amp Capacity
+    { 0x765, 0x766, VEHICLE_POLL_TYPE_OBDIIGROUP,  0x01, 		{       0,   5,    5 }, 0, ISOTP_STD },   // On Board Charger
+    { 0x771, 0x772, VEHICLE_POLL_TYPE_OBDIIGROUP,  0x13, 		{       0,   5,    5 }, 0, ISOTP_STD },   // External/Internal temp
+    { 0x782, 0x783, VEHICLE_POLL_TYPE_OBDIIGROUP,  0xCE, 		{       0,   5,    0 }, 0, ISOTP_STD },   // Trip A/B
     POLL_LIST_END
   };
 
@@ -385,9 +383,9 @@ void OvmsVehicleMitsubishi::IncomingFrameCan1(CAN_frame_t* p_frame)
 
       case 0x373://freq100 // Main Battery volt and current
       {  // 1kwh -» 3600000Ws -- freq100 -» 360000000
-        StandardMetrics.ms_v_bat_current->SetValue((((((d[2] * 256.0) + d[3])) - 32768)) * 0.01, Amps);
+        StandardMetrics.ms_v_bat_current->SetValue((((((d[2] * 256.0) + d[3])) - 32768)) * -0.01, Amps);
         StandardMetrics.ms_v_bat_voltage->SetValue((d[4] * 256.0 + d[5]) * 0.1, Volts);
-        StandardMetrics.ms_v_bat_power->SetValue((StandardMetrics.ms_v_bat_voltage->AsFloat(0, Volts) * StandardMetrics.ms_v_bat_current->AsFloat(0, Amps)) * -0.001, kW);
+        StandardMetrics.ms_v_bat_power->SetValue((StandardMetrics.ms_v_bat_voltage->AsFloat(0, Volts) * StandardMetrics.ms_v_bat_current->AsFloat(0, Amps)) * 0.001, kW);
         v_c_power_dc->SetValue( StandardMetrics.ms_v_bat_power->AsFloat() * -1.0, kW );
         if (!StandardMetrics.ms_v_charge_pilot->AsBool())
         {
@@ -431,7 +429,7 @@ void OvmsVehicleMitsubishi::IncomingFrameCan1(CAN_frame_t* p_frame)
         {
           //set battery voltage/current to charge voltage/current, when car in Park, and charging
           StandardMetrics.ms_v_charge_voltage->SetValue(StandardMetrics.ms_v_bat_voltage->AsFloat());
-          StandardMetrics.ms_v_charge_current->SetValue(StandardMetrics.ms_v_bat_current->AsFloat() * 1.0);
+          StandardMetrics.ms_v_charge_current->SetValue(StandardMetrics.ms_v_bat_current->AsFloat() * -1.0);
           StandardMetrics.ms_v_charge_kwh->SetValue(ms_v_charge_dc_kwh->AsFloat());
         }
 
