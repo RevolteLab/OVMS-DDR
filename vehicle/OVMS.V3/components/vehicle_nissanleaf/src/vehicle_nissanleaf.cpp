@@ -895,6 +895,17 @@ void OvmsVehicleNissanLeaf::IncomingFrameCan1(CAN_frame_t* p_frame) {
 
 void OvmsVehicleNissanLeaf::IncomingFrameEvCan(CAN_frame_t* p_frame)
   { // CAN1 is connected to EV-CAN
+  if (p_frame->MsgID == 0x60d) {
+        ESP_LOGI(TAG, "Frame from car can received in ev can, model year might be wrong, fixing...");
+        vehicle_nissanleaf_car_on(false);
+        if (MyConfig.GetParamValueInt("xnl", "modelyear", DEFAULT_MODEL_YEAR) >= 2013) {
+                MyConfig.SetParamValueInt("xnl", "modelyear", 2012);
+                PollSetPidList(m_can1,obdii_polls_phase1);
+        } else {
+                MyConfig.SetParamValueInt("xnl", "modelyear", 2013);
+                PollSetPidList(m_can1,obdii_polls_phase23);
+        }
+  }
   
   uint8_t *d = p_frame->data.u8;
 
