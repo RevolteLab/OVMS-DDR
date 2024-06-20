@@ -120,6 +120,8 @@ class OvmsVehicleNissanLeaf : public OvmsVehicle
     bool ObdRequest(uint16_t txid, uint16_t rxid, uint32_t request, string& response, int timeout_ms /*=3000*/, uint8_t bus);
     void IncomingFrameCan1(CAN_frame_t* p_frame) override;
     void IncomingFrameCan2(CAN_frame_t* p_frame) override;
+    void IncomingFrameCarCan(CAN_frame_t* p_frame);
+    void IncomingFrameEvCan(CAN_frame_t* p_frame);
     void IncomingPollReply(const OvmsPoller::poll_job_t &job, uint8_t* data, uint8_t length) override;
     vehicle_command_t CommandHomelink(int button, int durationms=1000) override;
     vehicle_command_t CommandClimateControl(bool enable) override;
