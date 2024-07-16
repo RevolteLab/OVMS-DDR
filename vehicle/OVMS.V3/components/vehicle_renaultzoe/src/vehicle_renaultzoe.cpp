@@ -883,11 +883,6 @@ void OvmsVehicleRenaultZoe::PollReply_VIN (const char* data, uint16_t reply_len)
         StandardMetrics.ms_v_vin->SetValue(strbuf);     // Pushing the VIN to the metrics
 }
 
-void OvmsVehicleRenaultZoe::PollReply_Diag (const char* data, uint16_t reply_len)
-{
-        //Do nothing since length is O
-        return;
-}
 /**
  * Handle incoming polls from the EPS Computer
  */
