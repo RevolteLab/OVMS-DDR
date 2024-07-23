@@ -28,8 +28,51 @@
 
 #include <cstdint>
 
+// PollSingleRequest specific result codes:
+#define POLLSINGLE_OK                   0
+#define POLLSINGLE_TIMEOUT              -1
+#define POLLSINGLE_TXFAILURE            -2
+
+#define VEHICLE_POLL_TYPE_NONE          0x00
+
 // Number of polling states supported
 #define VEHICLE_POLL_NSTATES            4
+
+// A note on "PID" and their sizes here:
+//  By "PID" for the service types we mean the part of the request parameters
+//  after the service type that is reflected in _every_ valid response to the request.
+//  That part is used to validate the response by the poller, if it doesn't match,
+//  the response won't be forwarded to the application.
+//  Some requests require additional parameters as specified in ISO 14229, but implementations
+//  may differ. For example, a 31b8 request on a VW ECU does not necessarily copy the routine
+//  ID in the response (e.g. with 0000), so the routine ID isn't part of our "PID" here.
+
+// Utils:
+#define POLL_TYPE_HAS_16BIT_PID(type) \
+  ((type) == VEHICLE_POLL_TYPE_READDATA || \
+   (type) == VEHICLE_POLL_TYPE_READSCALING || \
+   (type) == VEHICLE_POLL_TYPE_WRITEDATA || \
+   (type) == VEHICLE_POLL_TYPE_IOCONTROL || \
+   (type) == VEHICLE_POLL_TYPE_READOXSTEST)
+#define POLL_TYPE_HAS_NO_PID(type) \
+  ((type) == VEHICLE_POLL_TYPE_CLEARDTC || \
+   (type) == VEHICLE_POLL_TYPE_READMEMORY || \
+   (type) == VEHICLE_POLL_TYPE_READ_ERDTC || \
+   (type) == VEHICLE_POLL_TYPE_CLEAR_ERDTC || \
+   (type) == VEHICLE_POLL_TYPE_READ_DCERDTC || \
+   (type) == VEHICLE_POLL_TYPE_READ_PERMDTC || \
+   (type) == VEHICLE_POLL_TYPE_OBDII_18)
+#define POLL_TYPE_HAS_8BIT_PID(type) \
+  (!POLL_TYPE_HAS_NO_PID(type) && !POLL_TYPE_HAS_16BIT_PID(type))
+
+// OBD/UDS Negative Response Code
+#define UDS_RESP_TYPE_NRC               0x7F  // see ISO 14229 Annex A.1
+#define UDS_RESP_NRC_RCRRP              0x78  // … requestCorrectlyReceived-ResponsePending
+
+// Poll list PID xargs utility (see info above):
+#define POLL_PID_DATA(pid, datastring) \
+  {.xargs={ (pid), POLL_TXDATA, sizeof(datastring)-1, reinterpret_cast<const uint8_t*>(datastring) }}
+
 
 // VWTP_20 channel states:
 typedef enum
@@ -667,6 +710,7 @@ class OvmsPollers : public InternalRamAllocated {
     uint16_t          m_poll_between_success;
     uint32_t          m_poll_last;
 
+    _Alignas(32 / CHAR_BIT)
     QueueHandle_t     m_pollqueue;
     TaskHandle_t      m_polltask;
     CanFrameCallback  m_poll_txcallback;      // Poller CAN TxCallback
@@ -698,11 +742,51 @@ class OvmsPollers : public InternalRamAllocated {
     static void vehicle_pause_off(int verbosity, OvmsWriter* writer, OvmsCommand* cmd, int argc, const char* const* argv);
     static void vehicle_poller_trace(int verbosity, OvmsWriter* writer, OvmsCommand* cmd, int argc, const char* const* argv);
     static void poller_times(int verbosity, OvmsWriter* writer, OvmsCommand* cmd, int argc, const char* const* argv);
+
+#ifdef CONFIG_OVMS_SC_JAVASCRIPT_DUKTAPE
+    // OvmsPoller Object
+    // OvmsPoller.GetPaused
+    static duk_ret_t DukOvmsPollerPaused(duk_context *ctx);
+    // OvmsPoller.GetUserPaused
+    static duk_ret_t DukOvmsPollerUserPaused(duk_context *ctx);
+    // OvmsPoller.Pause
+    static duk_ret_t DukOvmsPollerPause(duk_context *ctx);
+    // OvmsPoller.Resume
+    static duk_ret_t DukOvmsPollerResume(duk_context *ctx);
+
+    // OvmsPoller.Trace
+    static duk_ret_t DukOvmsPollerSetTrace(duk_context *ctx);
+    // OvmsPoller.GetTraceStatus
+    static duk_ret_t DukOvmsPollerGetTrace(duk_context *ctx);
+
+    // OvmsPoller.Times Sub-object
+    // OvmsPoller.Times.GetEnabled
+    static duk_ret_t DukOvmsPollerTimesGetStarted(duk_context *ctx);
+    // OvmsPoller.Times.Start Times
+    static duk_ret_t DukOvmsPollerTimesStart(duk_context *ctx);
+    // OvmsPoller.Times.Start Times
+    static duk_ret_t DukOvmsPollerTimesStop(duk_context *ctx);
+    // OvmsPoller.Times.Reset
+    static duk_ret_t DukOvmsPollerTimesReset(duk_context *ctx);
+    // OvmsPoller.Times.GetStatus
+    static duk_ret_t DukOvmsPollerTimesGetStatus(duk_context *ctx);
+#endif
+
+    typedef struct {
+      std::string desc;
+      float avg_n, avg_utlzn_ms, max_time, avg_time, max_val;
+    } times_trace_elt_t;
+    typedef struct {
+      std::list<times_trace_elt_t> items;
+      float tot_n, tot_utlzn_ms, tot_time;
+    } times_trace_t;
+
     void PollerTimesReset();
     void PollerStatus(int verbosity, OvmsWriter* writer);
     void SetUserPauseStatus(bool paused, int verbosity, OvmsWriter* writer);
+    bool LoadTimesTrace( metric_unit_t ratio_unit, times_trace_t &trace);
   public:
-    bool PollerTimesTrace( OvmsWriter* writer, bool is_notify = false);
+    bool PollerTimesTrace( OvmsWriter* writer);
     bool IsTracingTimes() { return (m_trace & trace_Times) != 0; }
     typedef std::function<void(canbus*, void *)> PollCallback;
     typedef std::function<void(const CAN_frame_t &)> FrameCallback;
@@ -796,6 +880,7 @@ class OvmsPollers : public InternalRamAllocated {
       }
 
     void Ticker1(std::string event, void* data);
+    void Ticker1_Shutdown(std::string event, void* data);
     void EventSystemShuttingDown(std::string event, void* data);
     void ConfigChanged(std::string event, void* data);
     void LoadPollerTimerConfig();
@@ -812,7 +897,7 @@ class OvmsPollers : public InternalRamAllocated {
     ~OvmsPollers();
 
     void StartingUp();
-    void ShuttingDown( bool wait);
+    void ShuttingDown();
     void ShuttingDownVehicle();
 
     OvmsPoller *GetPoller(canbus *can, bool force = false );
@@ -880,7 +965,7 @@ class OvmsPollers : public InternalRamAllocated {
     void PowerDownCanBus(int busno);
     bool HasPollTask()
       {
-      return (m_polltask != nullptr);
+      return (Atomic_Get(m_polltask) != nullptr);
       }
     bool Ready() { return m_ready;}
     void Ready(bool ready) { m_ready = ready;}
