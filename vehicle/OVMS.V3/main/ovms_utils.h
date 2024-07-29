@@ -725,11 +725,19 @@ class ovms_callback_register_t
     {
     return Atomic_Swap<T>(variable, nullptr);
     }
+  /** Swap newval into variable if variable is checkval.
+   * @return true if successful.
+   */
+  template<typename T>
+  bool Atomic_SwapIf( volatile T &variable, T checkval, T newVal)
+    {
+    return __atomic_compare_exchange_n(&variable, &checkval, newVal, false,  __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+    }
 
   template<typename T>
   T Atomic_Get( volatile const T &variable)
     {
-    return variable;
+    return __atomic_load_n(&variable, __ATOMIC_SEQ_CST);
     }
   template<typename T>
   T Atomic_Increment( volatile T &variable, T amt)
@@ -778,21 +786,37 @@ class ovms_callback_register_t
   class average_util_t
     {
     private:
-      T m_ave;
-    public:
-      average_util_t() : m_ave(0) {}
-
       static const uint8_t _BITS = floorlog2(N);
-
-      void add( T val)
+      static const T _REST = (N-1);
+      T m_ave;
+      uint8_t m_n;
+    public:
+      average_util_t() : m_ave(0), m_n(0)
         {
         static_assert(N == (1 << _BITS), "N must be a power of 2");
-        m_ave = (((N-1) * m_ave) + val) >> _BITS;
+        }
+
+      void add(T val)
+        {
+        if (m_n == _BITS) // Optimise for templated values.
+          m_ave = ((_REST * m_ave) + val) >> _BITS;
+        else
+          {
+          // This is not quite as proper as m_n being the number of items,
+          // but it is better than not ramping up at all and it works out
+          // after a bit anyway.. and it's faster than using /.
+          if (m_n == 0)
+            m_ave = val; // Wear the cost of the if.
+          else // Simplify to 2 shifts.
+            m_ave = ((m_ave << m_n) - m_ave + val) >> m_n;
+          ++m_n;
+          }
         }
       T get() { return m_ave; }
       operator T() { return m_ave; }
       void reset()
         {
+        m_n = 0;
         m_ave = 0;
         }
     };
