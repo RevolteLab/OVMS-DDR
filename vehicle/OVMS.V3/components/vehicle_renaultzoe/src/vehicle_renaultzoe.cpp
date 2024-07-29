@@ -58,8 +58,6 @@ static const OvmsPoller::poll_pid_t renault_zoe_polls[] = {
   { PID_ECU_TX, PID_ECU_RX, VEHICLE_POLL_TYPE_OBDIISESSION, POLL_SID_DIAG, { 0, 1, 1, 1 }, 0, ISOTP_STD },  // DIAG
   { PID_ECU_TX, PID_ECU_RX, VEHICLE_POLL_TYPE_OBDIIGROUP, POLL_SID_VIN, { 0, 30, 30, 30 }, 0, ISOTP_STD },  // VIN
   { 0x7e4, 0x7ec, VEHICLE_POLL_TYPE_OBDIIEXTENDED, 0x3203, { 0, 10, 1, 5 }, 0, ISOTP_STD},  // Battery Voltage
-  { PID_ECU_TX, PID_ECU_RX, VEHICLE_POLL_TYPE_OBDIISESSION, POLL_SID_DIAG, { 0, 1, 1, 1 }, 0, ISOTP_STD },  // DIAG
-  { PID_ECU_TX, PID_ECU_RX, VEHICLE_POLL_TYPE_OBDIIGROUP, POLL_SID_VIN, { 0, 30, 30, 30 }, 0, ISOTP_STD },  // VIN
   { 0x7e4, 0x7ec, VEHICLE_POLL_TYPE_OBDIIEXTENDED, 0x3204, { 0, 10, 1, 5 }, 0, ISOTP_STD },  // Battery Current
   //{ 0x7e4, 0x7ec, VEHICLE_POLL_TYPE_OBDIIEXTENDED, 0x3028, { 0, 10, 10, 10 } },  // 12Battery Current
   //7ec,24,39,.005,0,0,kwh,22320C,62320C,ff,Available discharge Energy
