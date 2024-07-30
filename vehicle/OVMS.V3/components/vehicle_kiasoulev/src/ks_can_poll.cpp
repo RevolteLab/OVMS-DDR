@@ -169,9 +169,6 @@ void OvmsVehicleKiaSoulEv::IncomingOBC(canbus* bus, uint16_t type, uint16_t pid,
  */
 void OvmsVehicleKiaSoulEv::IncomingVMCU(canbus* bus, uint16_t type, uint16_t pid, const uint8_t* data, uint16_t mloffset, uint8_t length, uint16_t mlframe, uint16_t mlremain)
 	{
-	int32_t base;
-	uint8_t bVal;
-
 	switch (pid)
 		{
 		case 0x00:
