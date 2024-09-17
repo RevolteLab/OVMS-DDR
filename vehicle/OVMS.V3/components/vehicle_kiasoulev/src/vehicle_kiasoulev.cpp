@@ -211,7 +211,7 @@ static const OvmsPoller::poll_pid_t vehicle_kiasoulev_polls[] =
     { 0x7e4, 0x7ec, VEHICLE_POLL_TYPE_OBDIIGROUP,  	0x02, 		{       10,   10,  10 }, 0, ISOTP_STD }, 	// BMC Diag page 02
     { 0x7e4, 0x7ec, VEHICLE_POLL_TYPE_OBDIIGROUP,  	0x03, 		{       10,   10,  10 }, 0, ISOTP_STD }, 	// BMC Diag page 03
     { 0x7e4, 0x7ec, VEHICLE_POLL_TYPE_OBDIIGROUP,  	0x04, 		{       10,   10,  10 }, 0, ISOTP_STD }, 	// BMC Diag page 04
-    { 0x7e4, 0x7ec, VEHICLE_POLL_TYPE_OBDIIGROUP,  	0x05, 		{       10,   10,  10 }, 0, ISOTP_STD },	    // BMC Diag page 05 *
+    { 0x7e4, 0x7ec, VEHICLE_POLL_TYPE_OBDIIGROUP,  	0x05, 		{       10,   10,  10 }, 0, ISOTP_STD },    // BMC Diag page 05 *
     { 0x794, 0x79c, VEHICLE_POLL_TYPE_OBDIIGROUP,  	0x02, 		{       0,   60,  10 }, 0, ISOTP_STD }, 	// OBC - On board charger
     { 0x7e2, 0x7ea, VEHICLE_POLL_TYPE_OBDIIGROUP,  	0x00, 		{       0,   10,  10 }, 0, ISOTP_STD }, 	// VMCU Shift-stick
     { 0x7e2, 0x7ea, VEHICLE_POLL_TYPE_OBDIIGROUP,  	0x02, 		{       0,   10,  30 }, 0, ISOTP_STD }, 	// VMCU Motor temp++
