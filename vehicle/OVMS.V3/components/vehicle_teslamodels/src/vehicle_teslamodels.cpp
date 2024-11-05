@@ -41,12 +41,19 @@ static const char *TAG = "v-teslamodels";
 #include "ovms_webserver.h"
 #endif
 
+void tms_query_part_number(int verbosity, OvmsWriter *writer, OvmsCommand *cmd, int argc, const char *const *argv)
+{
+  OvmsVehicleTeslaModelS* tesla_model_s = (OvmsVehicleTeslaModelS*)MyVehicleFactory.ActiveVehicle();
+  tesla_model_s->QueryBMSPartNumber();
+}
+
 OvmsVehicleTeslaModelS::OvmsVehicleTeslaModelS()
   {
   ESP_LOGI(TAG, "Tesla Model S vehicle module");
 
   memset(m_vin,0,sizeof(m_vin));
   memset(m_type,0,sizeof(m_type));
+  memset(m_bms_part_number,0,sizeof(m_bms_part_number));
   m_charge_w = 0;
 #ifdef CONFIG_OVMS_COMP_TPMS
   m_candata_timer = TS_CANDATA_TIMEOUT;
@@ -62,6 +69,8 @@ OvmsVehicleTeslaModelS::OvmsVehicleTeslaModelS()
   BmsSetCellArrangementTemperature(32, 2);
   BmsSetCellLimitsVoltage(1,4.9);
   BmsSetCellLimitsTemperature(-90,90);
+  cmd_get_part_num = MyCommandApp.RegisterCommand("tms", "Tesla Model S");
+  cmd_get_part_num->RegisterCommand("get_part_number", "Get the battery part number", tms_query_part_number);
 
 #ifdef CONFIG_OVMS_COMP_WEBSERVER
   MyWebServer.RegisterPage("/bms/cellmon", "BMS cell monitor", OvmsWebServer::HandleBmsCellMonitor, PageMenu_Vehicle, PageAuth_Cookie);
@@ -71,6 +80,7 @@ OvmsVehicleTeslaModelS::OvmsVehicleTeslaModelS()
 OvmsVehicleTeslaModelS::~OvmsVehicleTeslaModelS()
   {
   ESP_LOGI(TAG, "Shutdown Tesla Model S vehicle module");
+  MyCommandApp.UnregisterCommand("tms");
   MyCommandApp.UnregisterCommand("xts");
 #ifdef CONFIG_OVMS_COMP_WEBSERVER
   MyWebServer.DeregisterPage("/bms/cellmon");
@@ -193,6 +203,10 @@ void OvmsVehicleTeslaModelS::IncomingFrameCan1(CAN_frame_t* p_frame)
       StandardMetrics.ms_v_bat_consumption->SetValue(((uint32_t)d[5]<<8)+d[4],WattHoursPM);
       break;
       }
+    case 0x382: //Battery Energy Statu
+    {
+
+    }
     case 0x398: // Country
       {
       m_type[0] = 'T';
@@ -228,6 +242,61 @@ void OvmsVehicleTeslaModelS::IncomingFrameCan1(CAN_frame_t* p_frame)
                                                 + d[0])/1000, Miles);
       break;
       }
+    case 0x612: //BMS Query ISO-TP Response
+    {
+      enum class eBMSQuery
+      {
+        NONE,
+        PART_NUMBER,
+        SERIAl_NUMBER,
+      } current_query = eBMSQuery::NONE;
+
+      //Check if it is a first Frame on SID 0x12 -> Read Data By Identifier 
+      if(d[0] == 0x10 && d[2] == 0x62)
+      {
+        //Part Number DID = 0xF014
+        if(d[3] == 0xF0 && d[4] == 0x14)
+        {
+          current_query = eBMSQuery::PART_NUMBER;
+        }
+      }
+
+      switch (current_query)
+      {
+      case eBMSQuery::PART_NUMBER:
+      {
+        switch(d[0])
+        {
+          //First Frame
+          case 0x10:
+          {
+            memcpy(m_bms_part_number,d+5,3);
+            break;
+          }
+          //Consecutive frame 1
+          case 0x21:
+          {
+            memcpy(m_bms_part_number+3,d+1,7);
+            break;
+          }
+          //Consecutive frame 2
+          case 0x22:
+          {
+            memcpy(m_bms_part_number+10,d+1,7);
+            tms_v_bms_part_number->SetValue(m_bms_part_number);
+            current_query = eBMSQuery::NONE; //Reset the current Query
+            break;
+          }
+          default:
+            break;
+        }
+        break;
+      }
+      default:
+        break;
+      }
+      break;
+    }
     case 0x6f2: // BMS brick voltage and module temperatures
       {
       int v1 = ((int)(d[2]&0x3f)<<8) + d[1];
@@ -415,6 +484,49 @@ void OvmsVehicleTeslaModelS::Notify12vRecovered()
 
 void OvmsVehicleTeslaModelS::NotifyBmsAlerts()
   { // Not supported on Model S
+  }
+
+
+BaseType_t xReturned;
+TaskHandle_t xHandle = NULL;
+
+void vTaskTeslaQueryBMSPartNumber(void *pvParameters)
+  {
+    configASSERT(((uint32_t)pvParameters) == 1);
+
+    OvmsVehicleTeslaModelS *tesla = (OvmsVehicleTeslaModelS *)MyVehicleFactory.ActiveVehicle();
+
+    //Send Query for the BMS part number service 0x22 DID 0xF014
+    uint8_t data[8] = {0x03, 0x22, 0xF0, 0x14, 00, 00, 00, 00 };
+    tesla->m_can1->WriteStandard(0x602, 8, data);
+
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+
+    //Flow Control
+    data[0] = 0x30;
+    data[1] = 0x00;
+    data[2] = 0x0A;
+    data[3] = 0x00;
+    data[4] = 0x00;
+    data[5] = 0x00;
+    data[6] = 0x00;
+    data[7] = 0x00;
+    tesla->m_can1->WriteStandard(0x602, 8, data);
+    
+    // Self delete (idk)
+    vTaskDelete(xHandle);
+    xHandle = nullptr;
+  }
+
+void OvmsVehicleTeslaModelS::QueryBMSPartNumber()
+  {
+      xReturned = xTaskCreate(
+      vTaskTeslaQueryBMSPartNumber,      
+      "TeslaBMSQuery",     
+      4096,            
+      (void *)1,       
+      tskIDLE_PRIORITY,
+      &xHandle);       
   }
 
 #ifdef CONFIG_OVMS_COMP_TPMS
