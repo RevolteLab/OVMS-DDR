@@ -57,7 +57,7 @@ class OvmsVehicleTeslaModelS: public OvmsVehicle
 
   public:
     void QueryBMSPartNumber();
-
+    void QueryBMSSerialNumber();
 #ifdef CONFIG_OVMS_COMP_TPMS
   public:
     bool TPMSRead(std::vector<uint32_t> *tpms) override;
@@ -82,8 +82,10 @@ class OvmsVehicleTeslaModelS: public OvmsVehicle
 
   public:
     OvmsMetricString* tms_v_bms_part_number = MyMetrics.InitString("tms.v.bms.part.number", SM_STALE_NONE, 0);
+    OvmsMetricString* tms_v_bms_serial_number = MyMetrics.InitString("tms.v.bms.serial.number", SM_STALE_NONE, 0);
   protected:
     char m_bms_part_number[23];
+    char m_bms_serial_number[17];
     char m_vin[18];
     char m_type[5];
     uint16_t m_charge_w;
