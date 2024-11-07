@@ -97,6 +97,16 @@ void OvmsVehicleTeslaModelS::Ticker1(uint32_t ticker)
     }
   }
 
+/**
+ * Enum for the BMS UDS Query types
+ */
+enum class eBMSQuery
+{
+  NONE,
+  PART_NUMBER,
+  SERIAl_NUMBER,
+} current_query = eBMSQuery::NONE;
+
 void OvmsVehicleTeslaModelS::IncomingFrameCan1(CAN_frame_t* p_frame)
   {
   // Tesla Model S/X CAN3: Powertrain
@@ -244,12 +254,6 @@ void OvmsVehicleTeslaModelS::IncomingFrameCan1(CAN_frame_t* p_frame)
       }
     case 0x612: //BMS Query ISO-TP Response
     {
-      enum class eBMSQuery
-      {
-        NONE,
-        PART_NUMBER,
-        SERIAl_NUMBER,
-      } current_query = eBMSQuery::NONE;
 
       //Check if it is a first Frame on SID 0x12 -> Read Data By Identifier 
       if(d[0] == 0x10 && d[2] == 0x62)
@@ -258,6 +262,11 @@ void OvmsVehicleTeslaModelS::IncomingFrameCan1(CAN_frame_t* p_frame)
         if(d[3] == 0xF0 && d[4] == 0x14)
         {
           current_query = eBMSQuery::PART_NUMBER;
+        }
+        //Serial Number DID = 0xF015
+        if(d[3] == 0xF0 && d[4] == 0x15)
+        {
+          current_query = eBMSQuery::SERIAl_NUMBER;
         }
       }
 
