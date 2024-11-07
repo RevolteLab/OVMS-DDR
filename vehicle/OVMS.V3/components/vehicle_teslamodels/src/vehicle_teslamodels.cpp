@@ -76,9 +76,9 @@ OvmsVehicleTeslaModelS::OvmsVehicleTeslaModelS()
   BmsSetCellArrangementTemperature(32, 2);
   BmsSetCellLimitsVoltage(1,4.9);
   BmsSetCellLimitsTemperature(-90,90);
-  cmd_get_part_num = MyCommandApp.RegisterCommand("tms", "Tesla Model S");
-  cmd_get_part_num->RegisterCommand("get_part_number", "Get the battery part number", tms_query_part_number);
-  cmd_get_part_num->RegisterCommand("get_serial_number", "Get the battery serial number", tms_query_serial_number);
+  cmd_bms_get = MyCommandApp.RegisterCommand("tms", "Tesla Model S");
+  cmd_bms_get->RegisterCommand("get_part_number", "Get the battery part number", tms_query_part_number);
+  cmd_bms_get->RegisterCommand("get_serial_number", "Get the battery serial number", tms_query_serial_number);
 
 #ifdef CONFIG_OVMS_COMP_WEBSERVER
   MyWebServer.RegisterPage("/bms/cellmon", "BMS cell monitor", OvmsWebServer::HandleBmsCellMonitor, PageMenu_Vehicle, PageAuth_Cookie);
@@ -89,7 +89,6 @@ OvmsVehicleTeslaModelS::~OvmsVehicleTeslaModelS()
   {
   ESP_LOGI(TAG, "Shutdown Tesla Model S vehicle module");
   MyCommandApp.UnregisterCommand("tms");
-  MyCommandApp.UnregisterCommand("xts");
 #ifdef CONFIG_OVMS_COMP_WEBSERVER
   MyWebServer.DeregisterPage("/bms/cellmon");
 #endif
@@ -221,7 +220,7 @@ void OvmsVehicleTeslaModelS::IncomingFrameCan1(CAN_frame_t* p_frame)
       StandardMetrics.ms_v_bat_consumption->SetValue(((uint32_t)d[5]<<8)+d[4],WattHoursPM);
       break;
       }
-    case 0x382: //Battery Energy Status
+    case 0x382: // Battery Energy Status
     {
       float nominal_energy = (d[0]+((d[1]&0x03)<<8)) *0.1f;
       tms_v_b_nom_ener->SetValue(nominal_energy,kWh);
@@ -264,7 +263,6 @@ void OvmsVehicleTeslaModelS::IncomingFrameCan1(CAN_frame_t* p_frame)
       }
     case 0x612: //BMS Query ISO-TP Response
     {
-
       //Check if it is a first Frame on SID 0x12 -> Read Data By Identifier 
       if(d[0] == 0x10 && d[2] == 0x62)
       {
@@ -282,66 +280,66 @@ void OvmsVehicleTeslaModelS::IncomingFrameCan1(CAN_frame_t* p_frame)
 
       switch (current_query)
       {
-      case eBMSQuery::PART_NUMBER:
-      {
-        switch(d[0])
+        case eBMSQuery::PART_NUMBER:
         {
-          //First Frame
-          case 0x10:
+          switch(d[0])
           {
-            memcpy(m_bms_part_number,d+5,3);
-            break;
+            //First Frame
+            case 0x10:
+            {
+              memcpy(m_bms_part_number,d+5,3);
+              break;
+            }
+            //Consecutive frame 1
+            case 0x21:
+            {
+              memcpy(m_bms_part_number+3,d+1,7);
+              break;
+            }
+            //Consecutive frame 2
+            case 0x22:
+            {
+              memcpy(m_bms_part_number+10,d+1,7);
+              tms_v_bms_part_number->SetValue(m_bms_part_number);
+              current_query = eBMSQuery::NONE; //Reset the current Query
+              break;
+            }
+            default:
+              break;
           }
-          //Consecutive frame 1
-          case 0x21:
-          {
-            memcpy(m_bms_part_number+3,d+1,7);
-            break;
-          }
-          //Consecutive frame 2
-          case 0x22:
-          {
-            memcpy(m_bms_part_number+10,d+1,7);
-            tms_v_bms_part_number->SetValue(m_bms_part_number);
-            current_query = eBMSQuery::NONE; //Reset the current Query
-            break;
-          }
-          default:
-            break;
+          break;
         }
-        break;
-      }
-      case eBMSQuery::SERIAl_NUMBER:
-      {
-        switch(d[0])
+        case eBMSQuery::SERIAl_NUMBER:
         {
-          //First Frame
-          case 0x10:
+          switch(d[0])
           {
-            memcpy(m_bms_serial_number,d+5,3);
-            break;
+            //First Frame
+            case 0x10:
+            {
+              memcpy(m_bms_serial_number,d+5,3);
+              break;
+            }
+            //Consecutive frame 1
+            case 0x21:
+            {
+              memcpy(m_bms_serial_number+3,d+1,7);
+              break;
+            }
+            //Consecutive frame 2
+            case 0x22:
+            {
+              memcpy(m_bms_serial_number+10,d+1,4);
+              tms_v_bms_serial_number->SetValue(m_bms_serial_number);
+              current_query = eBMSQuery::NONE; //Reset the current Query
+              break;
+            }
+            default:
+              break;
           }
-          //Consecutive frame 1
-          case 0x21:
-          {
-            memcpy(m_bms_serial_number+3,d+1,7);
-            break;
-          }
-          //Consecutive frame 2
-          case 0x22:
-          {
-            memcpy(m_bms_serial_number+10,d+1,4);
-            tms_v_bms_serial_number->SetValue(m_bms_serial_number);
-            current_query = eBMSQuery::NONE; //Reset the current Query
-            break;
-          }
-          default:
-            break;
+          break;
         }
-        break;
-      }
-      default:
-        break;
+        default:
+          break;
       }
       break;
     }
@@ -534,9 +532,8 @@ void OvmsVehicleTeslaModelS::NotifyBmsAlerts()
   { // Not supported on Model S
   }
 
-
-BaseType_t xReturned;
-TaskHandle_t xHandle = NULL;
+volatile BaseType_t xReturned;
+volatile TaskHandle_t xHandle = NULL;
 
 void vTaskTeslaQueryBMSPartNumber(void *pvParameters)
   {
@@ -576,7 +573,6 @@ void OvmsVehicleTeslaModelS::QueryBMSPartNumber()
       tskIDLE_PRIORITY,
       &xHandle);       
   }
-
   
 void vTaskTeslaQueryBMSSerialNumber(void *pvParameters)
   {
@@ -605,6 +601,7 @@ void vTaskTeslaQueryBMSSerialNumber(void *pvParameters)
     vTaskDelete(xHandle);
     xHandle = nullptr;
   }
+
 void OvmsVehicleTeslaModelS::QueryBMSSerialNumber()
   {
       xReturned = xTaskCreate(
