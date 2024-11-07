@@ -33,6 +33,7 @@ static const char *TAG = "v-teslamodels";
 
 #include <stdio.h>
 #include <string.h>
+#include <unordered_map>
 #include "pcp.h"
 #include "vehicle_teslamodels.h"
 #include "ovms_metrics.h"
@@ -220,9 +221,11 @@ void OvmsVehicleTeslaModelS::IncomingFrameCan1(CAN_frame_t* p_frame)
       StandardMetrics.ms_v_bat_consumption->SetValue(((uint32_t)d[5]<<8)+d[4],WattHoursPM);
       break;
       }
-    case 0x382: //Battery Energy Statu
+    case 0x382: //Battery Energy Status
     {
-
+      float nominal_energy = (d[0]+((d[1]&0x03)<<8)) *0.1f;
+      tms_v_b_nom_ener->SetValue(nominal_energy,kWh);
+      this->UpdateSOH();
     }
     case 0x398: // Country
       {
@@ -613,6 +616,128 @@ void OvmsVehicleTeslaModelS::QueryBMSSerialNumber()
       &xHandle);       
   }
 
+/**
+ * @brief Retrieves the capacity based on the given part number.
+ *
+ * This function searches for the provided battery part number in a predefined
+ * list of part numbers and returns the associated capacity. If the
+ * part number is not found, it returns 0 indicating the
+ * part number is not found.
+ *
+ * @param partNumber The part number to search for.
+ * @return The capacity associated with the part number, or 0
+ */
+int getCapacity(const std::string& partNumber) 
+{
+    // Create a map of part numbers to their capacities
+    std::unordered_map<std::string, int> capacities = 
+    {
+        {"1086755-00-D", 100},
+        {"1063792-00-A", 90},
+        {"1088792-00-A", 90},
+        {"1091269-00-A", 90},
+        {"1088790-00-A", 90},
+        {"1084560-00-A", 90},
+        {"1071941-00-C", 90},
+        {"1084558-00-A", 90},
+        {"1069582-0X-E", 90},
+        {"1056776-00-E", 90},
+        {"1089737-0X-A", 90},
+        {"1071394-00-A", 90},
+        {"1069582-0X-C", 90},
+        {"1069776-0X-A", 90},
+        {"1056776-00-C", 90},
+        {"1076319-00-A", 90},
+        {"1107172-00-A", 85},
+        {"1076319-00-A", 85},
+        {"1076318-00-D", 85},
+        {"1076318-00-C", 85},
+        {"1069777-0X-A", 85},
+        {"1064362-00-A", 85},
+        {"1067886-0X-C", 85},
+        {"1055835-00-D", 85},
+        {"1055835-00-C", 85},
+        {"1057472-01-E", 85},
+        {"1057472-0X-E", 85},
+        {"1088934-0X-E", 85},
+        {"1031043-00-E", 85},
+        {"1066399-0X-B", 85},
+        {"1088935-0X-B", 85},
+        {"1055519-00-B", 85},
+        {"1055519-00-A", 85},
+        {"1066399-0X-A", 85},
+        {"1088815-00-F", 85},
+        {"1014114-00-F", 85},
+        {"1014114-00-E", 85},
+        {"1014114-00-D", 85},
+        {"1038596-01-D", 85},
+        {"1025273-0X-D", 85},
+        {"1088815-0X-D", 85},
+        {"1025273-0X-B", 85},
+        {"1014114-00-B", 85},
+        {"1088815-0X-A", 85},
+        {"1025273-0X-A", 85},
+        {"1038596-0X-A", 85},
+        {"1014114-00-A", 85},
+        {"1101082-00-A", 85},
+        {"1088794-00-A", 75},
+        {"1091682-88-A", 75},
+        {"1072923-00-A", 75},
+        {"1074992-00-A", 70},
+        {"1069504-0X-C", 70},
+        {"1069504-00-E", 70},
+        {"1055893-00-E", 70},
+        {"1055893-00-D", 70},
+        {"1055893-00-C", 70},
+        {"1058971-00-B", 70},
+        {"1088999-0X-B", 70},
+        {"1067097-0X-B", 70},
+        {"1067097-0X-A", 70},
+        {"1058971-00-A", 70},
+        {"1039594-0X-D", 60},
+        {"1020422-00-D", 60},
+        {"1037114-0X-B", 60},
+        {"1028600-00-B", 60},
+        {"1020422-00-C", 60},
+        {"1025274-0X-B", 60},
+        {"1039594-0X-B", 60},
+        {"1020422-00-B", 60},
+        {"1039594-0X-A", 60},
+        {"1025274-0X-A", 60},
+        {"1020422-00-4", 60},
+        {"1020422-00-A", 60}
+    };
+
+    // Look up the part number in the map
+    auto it = capacities.find(partNumber);
+    if (it != capacities.end()) {
+        return it->second; // Return the capacity if found
+    } else {
+        return 0; // Return 0 if not found
+    }
+}
+  void OvmsVehicleTeslaModelS::UpdateSOH()
+  {
+    std::string bms_part_number = tms_v_bms_part_number->AsString();
+    //Check if part number is not empty
+    if(bms_part_number.length() == 0)
+    {
+      ESP_LOGI(TAG, "BMS part number not found");
+      return;
+    }
+    //Get the capacity
+    float capacity = (float)getCapacity(bms_part_number);
+    //Check if capacity is valid
+    if(capacity == 0)
+    {
+      ESP_LOGI(TAG, "BMS part number invalid");
+      return;
+    }
+
+    float nominal_energy = tms_v_b_nom_ener->AsFloat();
+
+    StandardMetrics.ms_v_bat_soh->SetValue((nominal_energy/capacity)*100.0f, Percentage);
+  }
 
 #ifdef CONFIG_OVMS_COMP_TPMS
 
