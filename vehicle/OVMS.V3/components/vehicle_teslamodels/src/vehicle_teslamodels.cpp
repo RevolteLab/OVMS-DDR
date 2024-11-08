@@ -61,6 +61,7 @@ OvmsVehicleTeslaModelS::OvmsVehicleTeslaModelS()
   memset(m_vin,0,sizeof(m_vin));
   memset(m_type,0,sizeof(m_type));
   memset(m_bms_part_number,0,sizeof(m_bms_part_number));
+  memset(m_bms_serial_number,0,sizeof(m_bms_serial_number));
   m_charge_w = 0;
 #ifdef CONFIG_OVMS_COMP_TPMS
   m_candata_timer = TS_CANDATA_TIMEOUT;
