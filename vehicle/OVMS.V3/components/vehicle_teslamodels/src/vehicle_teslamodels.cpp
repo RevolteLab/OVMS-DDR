@@ -735,7 +735,7 @@ float getCapacity(const std::string& partNumber)
 
     // Get the capacity and check if it is valid
     float capacity = getCapacity(bms_part_number);
-    //Check if capacity is valid
+    // Check if capacity is valid
     if(capacity == 0)
     {
       ESP_LOGI(TAG, "BMS part number invalid");
