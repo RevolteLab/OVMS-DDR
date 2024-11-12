@@ -222,7 +222,7 @@ void OvmsVehicleTeslaModelS::IncomingFrameCan1(CAN_frame_t* p_frame)
       break;
       }
     case 0x382: // Battery Energy Status
-    {
+      {
       float nominal_energy = (d[0]+((d[1]&0x03)<<8)) *0.1f;
       tms_v_b_nom_ener->SetValue(nominal_energy,kWh);
       this->UpdateSOH();
