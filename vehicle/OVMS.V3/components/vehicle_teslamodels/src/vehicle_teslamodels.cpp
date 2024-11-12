@@ -43,16 +43,16 @@ static const char *TAG = "v-teslamodels";
 #endif
 
 void tms_query_part_number(int verbosity, OvmsWriter *writer, OvmsCommand *cmd, int argc, const char *const *argv)
-{
+  {
   OvmsVehicleTeslaModelS* tesla_model_s = (OvmsVehicleTeslaModelS*)MyVehicleFactory.ActiveVehicle();
   tesla_model_s->QueryBMSPartNumber();
-}
+  }
 
 void tms_query_serial_number(int verbosity, OvmsWriter *writer, OvmsCommand *cmd, int argc, const char *const *argv)
-{
+  {
   OvmsVehicleTeslaModelS* tesla_model_s = (OvmsVehicleTeslaModelS*)MyVehicleFactory.ActiveVehicle();
   tesla_model_s->QueryBMSSerialNumber();
-}
+  }
 
 OvmsVehicleTeslaModelS::OvmsVehicleTeslaModelS()
   {
@@ -109,11 +109,11 @@ void OvmsVehicleTeslaModelS::Ticker1(uint32_t ticker)
  * Enum for the BMS UDS Query types
  */
 enum class eBMSQuery
-{
+  {
   NONE,
   PART_NUMBER,
   SERIAl_NUMBER,
-} current_query = eBMSQuery::NONE;
+  } current_query = eBMSQuery::NONE;
 
 void OvmsVehicleTeslaModelS::IncomingFrameCan1(CAN_frame_t* p_frame)
   {
@@ -263,9 +263,8 @@ void OvmsVehicleTeslaModelS::IncomingFrameCan1(CAN_frame_t* p_frame)
       break;
       }
     case 0x612: // BMS Query ISO-TP Response
-    case 0x612: // BMS Query ISO-TP Response
-    {
-      //  Check if it is a first Frame on SID 0x12 -> Read Data By Identifier
+      {
+      // Check if it is a first Frame on SID 0x12 -> Read Data By Identifier
       if(d[0] == 0x10 && d[2] == 0x62)
       {
         // Part Number DID = 0xF014
@@ -275,7 +274,7 @@ void OvmsVehicleTeslaModelS::IncomingFrameCan1(CAN_frame_t* p_frame)
           current_query = eBMSQuery::PART_NUMBER;
         }
 
-        //  Serial Number DID = 0xF015
+        // Serial Number DID = 0xF015
         if(d[3] == 0xF0 && d[4] == 0x15)
         {
           current_query = eBMSQuery::SERIAl_NUMBER;
@@ -735,7 +734,6 @@ float getCapacity(const std::string& partNumber)
 
     // Get the capacity and check if it is valid
     float capacity = getCapacity(bms_part_number);
-    // Check if capacity is valid
     if(capacity == 0)
     {
       ESP_LOGI(TAG, "BMS part number invalid");
@@ -963,7 +961,7 @@ bool OvmsVehicleTeslaModelS::TPMSWrite(std::vector<uint32_t> &tpms)
 class OvmsVehicleTeslaModelSInit
   {
   public: OvmsVehicleTeslaModelSInit();
-} MyOvmsVehicleTeslaModelSInit  __attribute__ ((init_priority (9000)));
+  } MyOvmsVehicleTeslaModelSInit  __attribute__ ((init_priority (9000)));
 
 OvmsVehicleTeslaModelSInit::OvmsVehicleTeslaModelSInit()
   {
