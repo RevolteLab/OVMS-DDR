@@ -77,7 +77,7 @@ OvmsVehicleTeslaModelS::OvmsVehicleTeslaModelS()
   BmsSetCellArrangementTemperature(32, 2);
   BmsSetCellLimitsVoltage(1,4.9);
   BmsSetCellLimitsTemperature(-90,90);
-  cmd_bms_get = MyCommandApp.RegisterCommand("tms", "Tesla Model S");
+  cmd_bms_get = MyCommandApp.RegisterCommand("xts", "Tesla Model S");
   cmd_bms_get->RegisterCommand("get_part_number", "Get the battery part number", tms_query_part_number);
   cmd_bms_get->RegisterCommand("get_serial_number", "Get the battery serial number", tms_query_serial_number);
 
@@ -89,7 +89,7 @@ OvmsVehicleTeslaModelS::OvmsVehicleTeslaModelS()
 OvmsVehicleTeslaModelS::~OvmsVehicleTeslaModelS()
   {
   ESP_LOGI(TAG, "Shutdown Tesla Model S vehicle module");
-  MyCommandApp.UnregisterCommand("tms");
+  MyCommandApp.UnregisterCommand("xts");
 #ifdef CONFIG_OVMS_COMP_WEBSERVER
   MyWebServer.DeregisterPage("/bms/cellmon");
 #endif
@@ -262,17 +262,18 @@ void OvmsVehicleTeslaModelS::IncomingFrameCan1(CAN_frame_t* p_frame)
                                                 + d[0])/1000, Miles);
       break;
       }
-    case 0x612: //BMS Query ISO-TP Response
+    case 0x612: // BMS Query ISO-TP Response
     {
-      //Check if it is a first Frame on SID 0x12 -> Read Data By Identifier 
+      // Check if it is a first Frame on SID 0x12 -> Read Data By Identifier
       if(d[0] == 0x10 && d[2] == 0x62)
       {
-        //Part Number DID = 0xF014
+        // Part Number DID = 0xF014
         if(d[3] == 0xF0 && d[4] == 0x14)
         {
           current_query = eBMSQuery::PART_NUMBER;
         }
-        //Serial Number DID = 0xF015
+
+        // Serial Number DID = 0xF015
         if(d[3] == 0xF0 && d[4] == 0x15)
         {
           current_query = eBMSQuery::SERIAl_NUMBER;
@@ -280,68 +281,72 @@ void OvmsVehicleTeslaModelS::IncomingFrameCan1(CAN_frame_t* p_frame)
       }
 
       switch (current_query)
-      {
-        case eBMSQuery::PART_NUMBER:
         {
-          switch(d[0])
-          {
-            //First Frame
-            case 0x10:
+          case eBMSQuery::PART_NUMBER:
             {
-              memcpy(m_bms_part_number,d+5,3);
+              switch(d[0])
+                  {
+                    // First Frame
+                    case 0x10:
+                    {
+                      memcpy(m_bms_part_number,d+5,3);
+                      break;
+                    }
+
+                    // Consecutive frame 1
+                    case 0x21:
+                    {
+                      memcpy(m_bms_part_number+3,d+1,7);
+                      break;
+                    }
+
+                    // Consecutive frame 2
+                    case 0x22:
+                    {
+                      memcpy(m_bms_part_number+10,d+1,7);
+                      tms_v_bms_part_number->SetValue(m_bms_part_number);
+                      current_query = eBMSQuery::NONE; //Reset the current Query
+                      break;
+                    }
+                    default:
+                      break;
+                  }
               break;
             }
-            //Consecutive frame 1
-            case 0x21:
+          case eBMSQuery::SERIAl_NUMBER:
             {
-              memcpy(m_bms_part_number+3,d+1,7);
+              switch(d[0])
+                  {
+                    // First Frame
+                    case 0x10:
+                    {
+                      memcpy(m_bms_serial_number,d+5,3);
+                      break;
+                    }
+
+                    // Consecutive frame 1
+                    case 0x21:
+                    {
+                      memcpy(m_bms_serial_number+3,d+1,7);
+                      break;
+                    }
+
+                    // Consecutive frame 2
+                    case 0x22:
+                    {
+                      memcpy(m_bms_serial_number+10,d+1,4);
+                      tms_v_bms_serial_number->SetValue(m_bms_serial_number);
+                      current_query = eBMSQuery::NONE; //Reset the current Query
+                      break;
+                    }
+                    default:
+                      break;
+                  }
               break;
             }
-            //Consecutive frame 2
-            case 0x22:
-            {
-              memcpy(m_bms_part_number+10,d+1,7);
-              tms_v_bms_part_number->SetValue(m_bms_part_number);
-              current_query = eBMSQuery::NONE; //Reset the current Query
-              break;
-            }
-            default:
-              break;
-          }
-          break;
+          default:
+            break;
         }
-        case eBMSQuery::SERIAl_NUMBER:
-        {
-          switch(d[0])
-          {
-            //First Frame
-            case 0x10:
-            {
-              memcpy(m_bms_serial_number,d+5,3);
-              break;
-            }
-            //Consecutive frame 1
-            case 0x21:
-            {
-              memcpy(m_bms_serial_number+3,d+1,7);
-              break;
-            }
-            //Consecutive frame 2
-            case 0x22:
-            {
-              memcpy(m_bms_serial_number+10,d+1,4);
-              tms_v_bms_serial_number->SetValue(m_bms_serial_number);
-              current_query = eBMSQuery::NONE; //Reset the current Query
-              break;
-            }
-            default:
-              break;
-          }
-          break;
-        }
-        default:
-          break;
-      }
       break;
     }
     case 0x6f2: // BMS brick voltage and module temperatures
