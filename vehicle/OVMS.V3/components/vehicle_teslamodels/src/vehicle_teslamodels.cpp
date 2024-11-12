@@ -77,9 +77,9 @@ OvmsVehicleTeslaModelS::OvmsVehicleTeslaModelS()
   BmsSetCellArrangementTemperature(32, 2);
   BmsSetCellLimitsVoltage(1,4.9);
   BmsSetCellLimitsTemperature(-90,90);
-  cmd_bms_get = MyCommandApp.RegisterCommand("xts", "Tesla Model S");
-  cmd_bms_get->RegisterCommand("get_part_number", "Get the battery part number", tms_query_part_number);
-  cmd_bms_get->RegisterCommand("get_serial_number", "Get the battery serial number", tms_query_serial_number);
+  m_cmd_bms_get = MyCommandApp.RegisterCommand("xts", "Tesla Model S");
+  m_cmd_bms_get->RegisterCommand("get_part_number", "Get the battery part number", tms_query_part_number);
+  m_cmd_bms_get->RegisterCommand("get_serial_number", "Get the battery serial number", tms_query_serial_number);
 
 #ifdef CONFIG_OVMS_COMP_WEBSERVER
   MyWebServer.RegisterPage("/bms/cellmon", "BMS cell monitor", OvmsWebServer::HandleBmsCellMonitor, PageMenu_Vehicle, PageAuth_Cookie);
@@ -539,8 +539,7 @@ void OvmsVehicleTeslaModelS::NotifyBmsAlerts()
   { // Not supported on Model S
   }
 
-static TaskHandle_t queryBMSPartNumberHandle = NULL;
-static TaskHandle_t queryBMSSerialNumberHandle = NULL;
+static TaskHandle_t queryBMSPartNumberHandle = nullptr;
 
 void vTaskTeslaQueryBMSPartNumber(void *pvParameters)
   {
@@ -572,15 +571,17 @@ void vTaskTeslaQueryBMSPartNumber(void *pvParameters)
 
 void OvmsVehicleTeslaModelS::QueryBMSPartNumber()
   {
-      xTaskCreate(
-        vTaskTeslaQueryBMSPartNumber,      
-        "TeslaBMSQueryPartNumber",     
-        4096,            
-        (void *)1,       
-        tskIDLE_PRIORITY,
-        &queryBMSPartNumberHandle);       
+    xTaskCreate(
+      vTaskTeslaQueryBMSPartNumber,
+      "TeslaBMSQueryPartNumber",
+      4096,
+      (void *)1,
+      tskIDLE_PRIORITY,
+      &queryBMSPartNumberHandle);
   }
-  
+
+static TaskHandle_t queryBMSSerialNumberHandle = nullptr;
+
 void vTaskTeslaQueryBMSSerialNumber(void *pvParameters)
   {
     configASSERT(((uint32_t)pvParameters) == 1);
@@ -611,13 +612,13 @@ void vTaskTeslaQueryBMSSerialNumber(void *pvParameters)
 
 void OvmsVehicleTeslaModelS::QueryBMSSerialNumber()
   {
-      xTaskCreate(
-        vTaskTeslaQueryBMSSerialNumber,      
-        "TeslaBMSQuerySerialNumber",     
-        4096,            
-        (void *)1,       
-        tskIDLE_PRIORITY,
-        &queryBMSSerialNumberHandle);       
+    xTaskCreate(
+      vTaskTeslaQueryBMSSerialNumber,
+      "TeslaBMSQuerySerialNumber",
+      4096,
+      (void *)1,
+      tskIDLE_PRIORITY,
+      &queryBMSSerialNumberHandle);
   }
 
 /**

@@ -85,15 +85,15 @@ class OvmsVehicleTeslaModelS: public OvmsVehicle
     OvmsMetricString* tms_v_bms_part_number = MyMetrics.InitString("tms.v.bms.part.number", SM_STALE_NONE, 0);
     OvmsMetricString* tms_v_bms_serial_number = MyMetrics.InitString("tms.v.bms.serial.number", SM_STALE_NONE, 0);
     OvmsMetricFloat*  tms_v_b_nom_ener = MyMetrics.InitFloat("tms.v.b.nom.ener", SM_STALE_MAX, 0, kWh);
-  
-  protected:
+
+protected:
     char m_bms_part_number[23];
     char m_bms_serial_number[17];
     char m_vin[18];
     char m_type[5];
     uint16_t m_charge_w;
     unsigned int m_candata_timer;
-    OvmsCommand* cmd_bms_get;
-  };
+    OvmsCommand* m_cmd_bms_get;
+};
 
 #endif //#ifndef __VEHICLE_TESLAMODELS_H__
