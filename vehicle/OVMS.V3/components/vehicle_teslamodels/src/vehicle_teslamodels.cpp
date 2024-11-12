@@ -539,11 +539,9 @@ void OvmsVehicleTeslaModelS::NotifyBmsAlerts()
   { // Not supported on Model S
   }
 
-static TaskHandle_t queryBMSPartNumberHandle = nullptr;
-
-void vTaskTeslaQueryBMSPartNumber(void *pvParameters)
+void OvmsVehicleTeslaModelS::vTaskTeslaQueryBMSPartNumber(void *pvParameters)
   {
-    configASSERT(((uint32_t)pvParameters) == 1);
+    OvmsVehicleTeslaModelS *self = static_cast<OvmsVehicleTeslaModelS *>(pvParameters);
 
     OvmsVehicleTeslaModelS *tesla = (OvmsVehicleTeslaModelS *)MyVehicleFactory.ActiveVehicle();
 
@@ -565,26 +563,24 @@ void vTaskTeslaQueryBMSPartNumber(void *pvParameters)
     tesla->m_can1->WriteStandard(0x602, 8, data);
     
     // Self delete (idk)
-    vTaskDelete(queryBMSPartNumberHandle);
-    queryBMSPartNumberHandle = nullptr;
+    vTaskDelete(self->m_queryBMSPartNumberHandle);
+    self->m_queryBMSPartNumberHandle = nullptr;
   }
 
 void OvmsVehicleTeslaModelS::QueryBMSPartNumber()
   {
     xTaskCreate(
-      vTaskTeslaQueryBMSPartNumber,
+      OvmsVehicleTeslaModelS::vTaskTeslaQueryBMSPartNumber,
       "TeslaBMSQueryPartNumber",
       4096,
-      (void *)1,
+      this,
       tskIDLE_PRIORITY,
-      &queryBMSPartNumberHandle);
+      &m_queryBMSPartNumberHandle);
   }
 
-static TaskHandle_t queryBMSSerialNumberHandle = nullptr;
-
-void vTaskTeslaQueryBMSSerialNumber(void *pvParameters)
+void OvmsVehicleTeslaModelS::vTaskTeslaQueryBMSSerialNumber(void *pvParameters)
   {
-    configASSERT(((uint32_t)pvParameters) == 1);
+    OvmsVehicleTeslaModelS *self = static_cast<OvmsVehicleTeslaModelS *>(pvParameters);
 
     OvmsVehicleTeslaModelS *tesla = (OvmsVehicleTeslaModelS *)MyVehicleFactory.ActiveVehicle();
 
@@ -606,19 +602,19 @@ void vTaskTeslaQueryBMSSerialNumber(void *pvParameters)
     tesla->m_can1->WriteStandard(0x602, 8, data);
     
     // Self delete (idk)
-    vTaskDelete(queryBMSSerialNumberHandle);
-    queryBMSSerialNumberHandle = nullptr;
+    vTaskDelete(self->m_queryBMSSerialNumberHandle);
+    self->m_queryBMSSerialNumberHandle = nullptr;
   }
 
 void OvmsVehicleTeslaModelS::QueryBMSSerialNumber()
   {
     xTaskCreate(
-      vTaskTeslaQueryBMSSerialNumber,
+      OvmsVehicleTeslaModelS::vTaskTeslaQueryBMSSerialNumber,
       "TeslaBMSQuerySerialNumber",
       4096,
-      (void *)1,
+      this,
       tskIDLE_PRIORITY,
-      &queryBMSSerialNumberHandle);
+      &m_queryBMSSerialNumberHandle);
   }
 
 /**

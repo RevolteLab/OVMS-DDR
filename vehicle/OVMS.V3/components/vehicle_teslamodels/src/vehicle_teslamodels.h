@@ -94,6 +94,11 @@ protected:
     uint16_t m_charge_w;
     unsigned int m_candata_timer;
     OvmsCommand* m_cmd_bms_get;
+    TaskHandle_t m_queryBMSPartNumberHandle = nullptr;
+    TaskHandle_t m_queryBMSSerialNumberHandle = nullptr;
+
+    static void vTaskTeslaQueryBMSPartNumber(void *pvParameters);
+    static void vTaskTeslaQueryBMSSerialNumber(void *pvParameters);
 };
 
 #endif //#ifndef __VEHICLE_TESLAMODELS_H__
