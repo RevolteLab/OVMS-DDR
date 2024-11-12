@@ -262,17 +262,17 @@ void OvmsVehicleTeslaModelS::IncomingFrameCan1(CAN_frame_t* p_frame)
                                                 + d[0])/1000, Miles);
       break;
       }
-    case 0x612: //BMS Query ISO-TP Response
+    case 0x612: // BMS Query ISO-TP Response
     {
-      //Check if it is a first Frame on SID 0x12 -> Read Data By Identifier 
+      // Check if it is a first Frame on SID 0x12 -> Read Data By Identifier 
       if(d[0] == 0x10 && d[2] == 0x62)
       {
-        //Part Number DID = 0xF014
+        // Part Number DID = 0xF014
         if(d[3] == 0xF0 && d[4] == 0x14)
         {
           current_query = eBMSQuery::PART_NUMBER;
         }
-        //Serial Number DID = 0xF015
+        // Serial Number DID = 0xF015
         if(d[3] == 0xF0 && d[4] == 0x15)
         {
           current_query = eBMSQuery::SERIAl_NUMBER;
@@ -285,24 +285,25 @@ void OvmsVehicleTeslaModelS::IncomingFrameCan1(CAN_frame_t* p_frame)
         {
           switch(d[0])
           {
-            //First Frame
+            // First Frame
             case 0x10:
             {
               memcpy(m_bms_part_number,d+5,3);
               break;
             }
-            //Consecutive frame 1
+            // Consecutive frame 1
             case 0x21:
             {
               memcpy(m_bms_part_number+3,d+1,7);
               break;
             }
-            //Consecutive frame 2
+            // Consecutive frame 2
             case 0x22:
             {
               memcpy(m_bms_part_number+10,d+1,7);
               tms_v_bms_part_number->SetValue(m_bms_part_number);
-              current_query = eBMSQuery::NONE; //Reset the current Query
+              // Reset the current Query
+              current_query = eBMSQuery::NONE;
               break;
             }
             default:
@@ -314,24 +315,24 @@ void OvmsVehicleTeslaModelS::IncomingFrameCan1(CAN_frame_t* p_frame)
         {
           switch(d[0])
           {
-            //First Frame
+            // First Frame
             case 0x10:
             {
               memcpy(m_bms_serial_number,d+5,3);
               break;
             }
-            //Consecutive frame 1
+            // Consecutive frame 1
             case 0x21:
             {
               memcpy(m_bms_serial_number+3,d+1,7);
               break;
             }
-            //Consecutive frame 2
+            // Consecutive frame 2
             case 0x22:
             {
               memcpy(m_bms_serial_number+10,d+1,4);
               tms_v_bms_serial_number->SetValue(m_bms_serial_number);
-              current_query = eBMSQuery::NONE; //Reset the current Query
+              current_query = eBMSQuery::NONE; // Reset the current Query
               break;
             }
             default:
@@ -533,8 +534,8 @@ void OvmsVehicleTeslaModelS::NotifyBmsAlerts()
   { // Not supported on Model S
   }
 
-volatile BaseType_t xReturned;
-volatile TaskHandle_t xHandle = NULL;
+static TaskHandle_t queryBMSPartNumberHandle = NULL;
+static TaskHandle_t queryBMSSerialNumberHandle = NULL;
 
 void vTaskTeslaQueryBMSPartNumber(void *pvParameters)
   {
@@ -542,13 +543,13 @@ void vTaskTeslaQueryBMSPartNumber(void *pvParameters)
 
     OvmsVehicleTeslaModelS *tesla = (OvmsVehicleTeslaModelS *)MyVehicleFactory.ActiveVehicle();
 
-    //Send Query for the BMS part number service 0x22 DID 0xF014
+    // Send Query for the BMS part number service 0x22 DID 0xF014
     uint8_t data[8] = {0x03, 0x22, 0xF0, 0x14, 00, 00, 00, 00 };
     tesla->m_can1->WriteStandard(0x602, 8, data);
 
     vTaskDelay(100 / portTICK_PERIOD_MS);
 
-    //Flow Control
+    // Flow Control
     data[0] = 0x30;
     data[1] = 0x00;
     data[2] = 0x0A;
@@ -560,19 +561,19 @@ void vTaskTeslaQueryBMSPartNumber(void *pvParameters)
     tesla->m_can1->WriteStandard(0x602, 8, data);
     
     // Self delete (idk)
-    vTaskDelete(xHandle);
-    xHandle = nullptr;
+    vTaskDelete(queryBMSPartNumberHandle);
+    queryBMSPartNumberHandle = nullptr;
   }
 
 void OvmsVehicleTeslaModelS::QueryBMSPartNumber()
   {
-      xReturned = xTaskCreate(
-      vTaskTeslaQueryBMSPartNumber,      
-      "TeslaBMSQueryPartNumber",     
-      4096,            
-      (void *)1,       
-      tskIDLE_PRIORITY,
-      &xHandle);       
+      xTaskCreate(
+        vTaskTeslaQueryBMSPartNumber,      
+        "TeslaBMSQueryPartNumber",     
+        4096,            
+        (void *)1,       
+        tskIDLE_PRIORITY,
+        &queryBMSPartNumberHandle);       
   }
   
 void vTaskTeslaQueryBMSSerialNumber(void *pvParameters)
@@ -581,13 +582,13 @@ void vTaskTeslaQueryBMSSerialNumber(void *pvParameters)
 
     OvmsVehicleTeslaModelS *tesla = (OvmsVehicleTeslaModelS *)MyVehicleFactory.ActiveVehicle();
 
-    //Send Query for the BMS part number service 0x22 DID 0xF014
+    // Send Query for the BMS part number service 0x22 DID 0xF014
     uint8_t data[8] = {0x03, 0x22, 0xF0, 0x15, 00, 00, 00, 00 };
     tesla->m_can1->WriteStandard(0x602, 8, data);
 
     vTaskDelay(100 / portTICK_PERIOD_MS);
 
-    //Flow Control
+    // Flow Control
     data[0] = 0x30;
     data[1] = 0x00;
     data[2] = 0x0A;
@@ -599,19 +600,19 @@ void vTaskTeslaQueryBMSSerialNumber(void *pvParameters)
     tesla->m_can1->WriteStandard(0x602, 8, data);
     
     // Self delete (idk)
-    vTaskDelete(xHandle);
-    xHandle = nullptr;
+    vTaskDelete(queryBMSSerialNumberHandle);
+    queryBMSSerialNumberHandle = nullptr;
   }
 
 void OvmsVehicleTeslaModelS::QueryBMSSerialNumber()
   {
-      xReturned = xTaskCreate(
-      vTaskTeslaQueryBMSSerialNumber,      
-      "TeslaBMSQuerySerialNumber",     
-      4096,            
-      (void *)1,       
-      tskIDLE_PRIORITY,
-      &xHandle);       
+      xTaskCreate(
+        vTaskTeslaQueryBMSSerialNumber,      
+        "TeslaBMSQuerySerialNumber",     
+        4096,            
+        (void *)1,       
+        tskIDLE_PRIORITY,
+        &queryBMSSerialNumberHandle);       
   }
 
 /**
@@ -717,7 +718,7 @@ float getCapacity(const std::string& partNumber)
   void OvmsVehicleTeslaModelS::UpdateSOH()
   {
     std::string bms_part_number = tms_v_bms_part_number->AsString();
-    //Check if part number is not empty
+    // Check if part number is not empty
     if(bms_part_number.length() == 0)
     {
       ESP_LOGI(TAG, "BMS part number not found");
@@ -725,9 +726,9 @@ float getCapacity(const std::string& partNumber)
       this->QueryBMSPartNumber();
       return;
     }
-    //Get the capacity
+    // Get the capacity
     float capacity = getCapacity(bms_part_number);
-    //Check if capacity is valid
+    // Check if capacity is valid
     if(capacity == 0)
     {
       ESP_LOGI(TAG, "BMS part number invalid");
