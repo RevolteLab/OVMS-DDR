@@ -721,18 +721,18 @@ float getCapacity(const std::string& partNumber)
 }
   void OvmsVehicleTeslaModelS::UpdateSOH()
   {
+    // Get par number and check if it not empty
     std::string bms_part_number = tms_v_bms_part_number->AsString();
-    //Check if part number is not empty
     if(bms_part_number.length() == 0)
     {
       ESP_LOGI(TAG, "BMS part number not found");
-      // Try to update the part number
+      // Try to update the part number if empty
       this->QueryBMSPartNumber();
       return;
     }
-    //Get the capacity
+
+    // Get the capacity and check if it is valid
     float capacity = getCapacity(bms_part_number);
-    //Check if capacity is valid
     if(capacity == 0)
     {
       ESP_LOGI(TAG, "BMS part number invalid");
