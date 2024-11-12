@@ -543,11 +543,9 @@ void OvmsVehicleTeslaModelS::vTaskTeslaQueryBMSPartNumber(void *pvParameters)
   {
     OvmsVehicleTeslaModelS *self = static_cast<OvmsVehicleTeslaModelS *>(pvParameters);
 
-    OvmsVehicleTeslaModelS *tesla = (OvmsVehicleTeslaModelS *)MyVehicleFactory.ActiveVehicle();
-
     // Send Query for the BMS part number service 0x22 DID 0xF014
     uint8_t data[8] = {0x03, 0x22, 0xF0, 0x14, 00, 00, 00, 00 };
-    tesla->m_can1->WriteStandard(0x602, 8, data);
+    self->m_can1->WriteStandard(0x602, 8, data);
 
     vTaskDelay(100 / portTICK_PERIOD_MS);
 
@@ -560,7 +558,7 @@ void OvmsVehicleTeslaModelS::vTaskTeslaQueryBMSPartNumber(void *pvParameters)
     data[5] = 0x00;
     data[6] = 0x00;
     data[7] = 0x00;
-    tesla->m_can1->WriteStandard(0x602, 8, data);
+    self->m_can1->WriteStandard(0x602, 8, data);
     
     // Self delete (idk)
     vTaskDelete(self->m_queryBMSPartNumberHandle);
@@ -582,11 +580,9 @@ void OvmsVehicleTeslaModelS::vTaskTeslaQueryBMSSerialNumber(void *pvParameters)
   {
     OvmsVehicleTeslaModelS *self = static_cast<OvmsVehicleTeslaModelS *>(pvParameters);
 
-    OvmsVehicleTeslaModelS *tesla = (OvmsVehicleTeslaModelS *)MyVehicleFactory.ActiveVehicle();
-
     // Send Query for the BMS part number service 0x22 DID 0xF014
     uint8_t data[8] = {0x03, 0x22, 0xF0, 0x15, 00, 00, 00, 00 };
-    tesla->m_can1->WriteStandard(0x602, 8, data);
+    self->m_can1->WriteStandard(0x602, 8, data);
 
     vTaskDelay(100 / portTICK_PERIOD_MS);
 
@@ -599,7 +595,7 @@ void OvmsVehicleTeslaModelS::vTaskTeslaQueryBMSSerialNumber(void *pvParameters)
     data[5] = 0x00;
     data[6] = 0x00;
     data[7] = 0x00;
-    tesla->m_can1->WriteStandard(0x602, 8, data);
+    self->m_can1->WriteStandard(0x602, 8, data);
     
     // Self delete (idk)
     vTaskDelete(self->m_queryBMSSerialNumberHandle);
