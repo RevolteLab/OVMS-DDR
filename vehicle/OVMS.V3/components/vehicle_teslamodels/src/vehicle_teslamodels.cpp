@@ -125,18 +125,18 @@ void OvmsVehicleTeslaModelS::IncomingFrameCan1(CAN_frame_t* p_frame)
     {
     case 0x102: // BMS current and voltage
       {
-        // Don't update battery voltage too quickly (as it jumps around like crazy)
-        if (StandardMetrics.ms_v_bat_voltage->Age() > 10) {
-          StandardMetrics.ms_v_bat_voltage->SetValue(((float)((int)d[1]<<8)+d[0])/100);
-          StandardMetrics.ms_v_bat_temp->SetValue((float)((((int)d[7]&0x07)<<8)+d[6])/10);
-        }
+      // BMS battery voltage
+      if (StandardMetrics.ms_v_bat_voltage->Age() > 10)
+        StandardMetrics.ms_v_bat_voltage->SetValue(((float)((int)d[1]<<8)+d[0])/100);
 
-        //BMS battery current
-        if (StandardMetrics.ms_v_bat_current->Age() > 3) {
-          StandardMetrics.ms_v_bat_current->SetValue((float)((int16_t) ((uint8_t)d[3] << 8 | (uint8_t)d[2])) * 0.1f);
-        }
+      // BMS battery temperature
+      if (StandardMetrics.ms_v_bat_temp->Age() > 10)
+        StandardMetrics.ms_v_bat_temp->SetValue((float)((((int)d[7]&0x07)<<8)+d[6])/10);
 
-        break;
+      // BMS battery current
+      if (StandardMetrics.ms_v_bat_current->Age() > 3)
+        StandardMetrics.ms_v_bat_current->SetValue((float)((int16_t) ((uint8_t)d[3] << 8 | (uint8_t)d[2])) * 0.1f);
+      break;
       }
     case 0x116: // Gear selector
       {
@@ -566,7 +566,7 @@ void OvmsVehicleTeslaModelS::vTaskTeslaQueryBMSPartNumber(void *pvParameters)
     data[6] = 0x00;
     data[7] = 0x00;
     self->m_can1->WriteStandard(0x602, 8, data);
-    
+
     // Self delete (idk)
     vTaskDelete(self->m_queryBMSPartNumberHandle);
     self->m_queryBMSPartNumberHandle = nullptr;
@@ -603,7 +603,7 @@ void OvmsVehicleTeslaModelS::vTaskTeslaQueryBMSSerialNumber(void *pvParameters)
     data[6] = 0x00;
     data[7] = 0x00;
     self->m_can1->WriteStandard(0x602, 8, data);
-    
+
     // Self delete (idk)
     vTaskDelete(self->m_queryBMSSerialNumberHandle);
     self->m_queryBMSSerialNumberHandle = nullptr;
@@ -631,10 +631,10 @@ void OvmsVehicleTeslaModelS::QueryBMSSerialNumber()
  * @param partNumber The part number to search for.
  * @return The capacity associated with the part number, or 0
  */
-float getCapacity(const std::string& partNumber) 
+float getCapacity(const std::string& partNumber)
 {
     // Create a map of part numbers to their capacities
-    std::unordered_map<std::string, float> capacities = 
+    std::unordered_map<std::string, float> capacities =
     {
         {"1086755-00-D", 100},
         {"1063792-00-A", 81.8},
