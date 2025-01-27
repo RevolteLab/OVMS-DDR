@@ -55,6 +55,7 @@ static const char *TAG = "v-nissanleaf";
 #define BROADCAST_RXID            0x0
 // other pairs 743/763 744/764 745/765 784/78C 792/793 79D/7BD
 #define VIN_PID                   0x81
+#define DIAG_PID                  0xC0
 #define QC_COUNT_PID              0x1203
 #define L1L2_COUNT_PID            0x1205
 
@@ -66,13 +67,28 @@ enum poll_states
   POLLSTATE_CHARGING  //- car is charging
   };
 
-static const OvmsPoller::poll_pid_t obdii_polls[] =
+static const OvmsPoller::poll_pid_t obdii_polls_phase23[] =
   {
-    // BUS 2
-    { CHARGER_TXID, CHARGER_RXID, VEHICLE_POLL_TYPE_OBDIIGROUP, VIN_PID, { 0, 60, 60, 60 }, 2, ISOTP_STD },          // VIN [19]
+    // BUS 2   
+    { CHARGER_TXID, CHARGER_RXID, VEHICLE_POLL_TYPE_OBDIIEXTENDED, QC_COUNT_PID, { 0, 900, 0, 0 }, 2, ISOTP_STD },   // QC [2]
+    { CHARGER_TXID, CHARGER_RXID, VEHICLE_POLL_TYPE_OBDIIEXTENDED, L1L2_COUNT_PID, { 0, 900, 0, 0 }, 2, ISOTP_STD }, // L0/L1/L2 [2]
+    { CHARGER_TXID, CHARGER_RXID, VEHICLE_POLL_TYPE_OBDIIGROUP, VIN_PID, { 0, 10, 10, 10 }, 2, ISOTP_STD },    // VIN [19]
+    // BUS 1
+    { BMS_TXID, BMS_RXID, VEHICLE_POLL_TYPE_OBDIIGROUP, 0x01, { 0, 60, 60, 60 }, 1, ISOTP_STD }, // bat [39/41]
+    { BMS_TXID, BMS_RXID, VEHICLE_POLL_TYPE_OBDIIGROUP, 0x02, { 0, 60, 10, 60 }, 1, ISOTP_STD }, // battery voltages [196]
+    { BMS_TXID, BMS_RXID, VEHICLE_POLL_TYPE_OBDIIGROUP, 0x06, { 0, 60, 60, 60 }, 1, ISOTP_STD }, // battery shunts [96]
+    { BMS_TXID, BMS_RXID, VEHICLE_POLL_TYPE_OBDIIGROUP, 0x04, { 0, 60, 60, 60 }, 1, ISOTP_STD }, // battery temperatures [14]
+    POLL_LIST_END
+  };
+
+static const OvmsPoller::poll_pid_t obdii_polls_phase1[] =
+  {
+    // BUS 2   
     { CHARGER_TXID, CHARGER_RXID, VEHICLE_POLL_TYPE_OBDIIEXTENDED, QC_COUNT_PID, { 0, 900, 0, 0 }, 2, ISOTP_STD },   // QC [2]
     { CHARGER_TXID, CHARGER_RXID, VEHICLE_POLL_TYPE_OBDIIEXTENDED, L1L2_COUNT_PID, { 0, 900, 0, 0 }, 2, ISOTP_STD }, // L0/L1/L2 [2]
     // BUS 1
+    { CHARGER_TXID, CHARGER_RXID, VEHICLE_POLL_TYPE_OBDIISESSION, DIAG_PID, { 0, 1, 1, 1}, 1, ISOTP_STD },    // VIN [19]
+    { CHARGER_TXID, CHARGER_RXID, VEHICLE_POLL_TYPE_OBDIIGROUP, VIN_PID, { 0, 10, 10, 10 }, 1, ISOTP_STD },    // VIN [19]
     { BMS_TXID, BMS_RXID, VEHICLE_POLL_TYPE_OBDIIGROUP, 0x01, { 0, 60, 60, 60 }, 1, ISOTP_STD }, // bat [39/41]
     { BMS_TXID, BMS_RXID, VEHICLE_POLL_TYPE_OBDIIGROUP, 0x02, { 0, 60, 10, 60 }, 1, ISOTP_STD }, // battery voltages [196]
     { BMS_TXID, BMS_RXID, VEHICLE_POLL_TYPE_OBDIIGROUP, 0x06, { 0, 60, 60, 60 }, 1, ISOTP_STD }, // battery shunts [96]
@@ -186,6 +202,7 @@ OvmsVehicleNissanLeaf::OvmsVehicleNissanLeaf()
   m_charge_user_notified = MyMetrics.InitString("xnl.v.c.event.notification", SM_STALE_HIGH, 0);
   m_charge_event_reason = MyMetrics.InitString("xnl.v.c.event.reason", SM_STALE_HIGH, 0);
   m_climate_auto = MyMetrics.InitBool("xnl.v.e.hvac.auto", SM_STALE_MIN, false);
+  m_diag_mode = MyMetrics.InitBool("xnl.v.e.diag", SM_STALE_MIN, false);
   MyMetrics.InitBool("v.e.on", SM_STALE_MIN, false);
   MyMetrics.InitBool("v.e.awake", SM_STALE_MID, false);
   MyMetrics.InitBool("v.e.locked", SM_STALE_MID, false);
@@ -198,7 +215,11 @@ OvmsVehicleNissanLeaf::OvmsVehicleNissanLeaf()
   RegisterCanBus(2,CAN_MODE_ACTIVE,CAN_SPEED_500KBPS);
   PollSetState(POLLSTATE_OFF);
   PollSetResponseSeparationTime(0);
-  PollSetPidList(m_can1,obdii_polls);
+  if (MyConfig.GetParamValueInt("xnl", "modelyear", DEFAULT_MODEL_YEAR) < 2013) {
+        PollSetPidList(m_can1,obdii_polls_phase1);
+  } else {
+        PollSetPidList(m_can1,obdii_polls_phase23);
+  }
 
   MyConfig.RegisterParam("xnl", "Nissan Leaf", true, true);
   ConfigChanged(NULL);
@@ -588,10 +609,19 @@ bool OvmsVehicleNissanLeaf::ObdRequest(uint16_t txid, uint16_t rxid, uint32_t re
   // restore default polling:
   nl_obd_rxwait.Give();
   vTaskDelay(pdMS_TO_TICKS(100));
-  PollSetPidList(obdii_polls);
+  if (MyConfig.GetParamValueInt("xnl", "modelyear", DEFAULT_MODEL_YEAR) < 2013) {
+        PollSetPidList(obdii_polls_phase1);
+  } else {
+        PollSetPidList(obdii_polls_phase23);
+  }
 
   return (rxok == pdTRUE);
   }
+
+void OvmsVehicleNissanLeaf::PollReply_DiagEnable(uint8_t reply_data[], uint16_t reply_len){
+        //TODO Fix, currently doing Nothing because reply_len == 0
+        return;
+}
 
 void OvmsVehicleNissanLeaf::PollReply_Battery(uint8_t reply_data[], uint16_t reply_len)
   {
@@ -784,8 +814,8 @@ void OvmsVehicleNissanLeaf::PollReply_VIN(uint8_t reply_data[], uint16_t reply_l
   //  < 0x79a 61 81
   // [ 0..16] 53 4a 4e 46 41 41 5a 45 30 55 3X 3X 3X 3X 3X 3X 3X
   // [17..18] 00 00
-  char buf[19];
-  strncpy(buf,(char*)reply_data,reply_len);
+  char buf[19] = {'\0'};
+  strncpy(buf,(char*)reply_data, 17);   // Hard coded data length for VIN discarding the two last bytes (unknown data)
   string strbuf(buf);
   std::replace(strbuf.begin(), strbuf.end(), 0x1b, 0x20); // remove ESC character returned by AZE0 models
   StandardMetrics.ms_v_vin->SetValue(strbuf); //(char*)reply_data
@@ -831,6 +861,9 @@ void OvmsVehicleNissanLeaf::IncomingPollReply(const OvmsPoller::poll_job_t &job,
       case CHARGER_RXID<<16 | VIN_PID: // VIN
         PollReply_VIN(buf, rxbuf.size());
         break;
+      case CHARGER_RXID << 16 | DIAG_PID:  //diag mode
+        PollReply_DiagEnable(buf, rxbuf.size());
+        break;
       default:
         ESP_LOGI(TAG, "IncomingPollReply: unknown reply module|pid=%#" PRIx32 " len=%d", id_pid, rxbuf.size());
         break;
@@ -844,9 +877,38 @@ void OvmsVehicleNissanLeaf::IncomingPollReply(const OvmsPoller::poll_job_t &job,
     }
   }
 
-void OvmsVehicleNissanLeaf::IncomingFrameCan1(CAN_frame_t* p_frame)
+void OvmsVehicleNissanLeaf::IncomingFrameCan2(CAN_frame_t* p_frame) {
+        if (MyConfig.GetParamValueInt("xnl", "modelyear", DEFAULT_MODEL_YEAR) >= 2013) {
+                IncomingFrameCarCan(p_frame);
+        } else{
+                IncomingFrameEvCan(p_frame);
+        }
+}
+
+void OvmsVehicleNissanLeaf::IncomingFrameCan1(CAN_frame_t* p_frame) {
+        if (MyConfig.GetParamValueInt("xnl", "modelyear", DEFAULT_MODEL_YEAR) >= 2013) {
+                IncomingFrameEvCan(p_frame);
+        } else{
+                IncomingFrameCarCan(p_frame);
+        }
+}
+
+void OvmsVehicleNissanLeaf::IncomingFrameEvCan(CAN_frame_t* p_frame)
   { // CAN1 is connected to EV-CAN
+  if (p_frame->MsgID == 0x60d) {
+        ESP_LOGI(TAG, "Frame from car can received in ev can, model year might be wrong, fixing...");
+        vehicle_nissanleaf_car_on(false);
+        if (MyConfig.GetParamValueInt("xnl", "modelyear", DEFAULT_MODEL_YEAR) >= 2013) {
+                MyConfig.SetParamValueInt("xnl", "modelyear", 2012);
+                PollSetPidList(m_can1,obdii_polls_phase1);
+        } else {
+                MyConfig.SetParamValueInt("xnl", "modelyear", 2013);
+                PollSetPidList(m_can1,obdii_polls_phase23);
+        }
+  }
+  
   uint8_t *d = p_frame->data.u8;
+
 
   switch (p_frame->MsgID)
     {
@@ -1470,7 +1532,7 @@ void OvmsVehicleNissanLeaf::IncomingFrameCan1(CAN_frame_t* p_frame)
     }
   }
 
-void OvmsVehicleNissanLeaf::IncomingFrameCan2(CAN_frame_t* p_frame)
+void OvmsVehicleNissanLeaf::IncomingFrameCarCan(CAN_frame_t* p_frame)
   { // CAN2 is connected to CAR-CAN
   uint8_t *d = p_frame->data.u8;
 
@@ -1612,10 +1674,12 @@ void OvmsVehicleNissanLeaf::IncomingFrameCan2(CAN_frame_t* p_frame)
           break;
         case 3: // ready to drive, is triggered on unlock
           StandardMetrics.ms_v_env_awake->SetValue(true);
-          if (StandardMetrics.ms_v_env_footbrake->AsFloat() > 0) //check footbrake to avoid false positive
+          /*if (StandardMetrics.ms_v_env_footbrake->AsFloat() > 0) //check footbrake to avoid false positive
             {
+                ESP_LOGD(TAG, "Turning on");
+                vehicle_nissanleaf_car_on(true);
+            }*/
             vehicle_nissanleaf_car_on(true);
-            }
           break;
         }
 

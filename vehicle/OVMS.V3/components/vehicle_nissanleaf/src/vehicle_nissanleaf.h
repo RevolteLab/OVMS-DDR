@@ -120,6 +120,8 @@ class OvmsVehicleNissanLeaf : public OvmsVehicle
     bool ObdRequest(uint16_t txid, uint16_t rxid, uint32_t request, string& response, int timeout_ms /*=3000*/, uint8_t bus);
     void IncomingFrameCan1(CAN_frame_t* p_frame) override;
     void IncomingFrameCan2(CAN_frame_t* p_frame) override;
+    void IncomingFrameCarCan(CAN_frame_t* p_frame);
+    void IncomingFrameEvCan(CAN_frame_t* p_frame);
     void IncomingPollReply(const OvmsPoller::poll_job_t &job, uint8_t* data, uint8_t length) override;
     vehicle_command_t CommandHomelink(int button, int durationms=1000) override;
     vehicle_command_t CommandClimateControl(bool enable) override;
@@ -174,6 +176,7 @@ class OvmsVehicleNissanLeaf : public OvmsVehicle
     void PollReply_BMS_Volt(uint8_t reply_data[], uint16_t reply_len);
     void PollReply_BMS_Shunt(uint8_t reply_data[], uint16_t reply_len);
     void PollReply_BMS_Temp(uint8_t reply_data[], uint16_t reply_len);
+    void PollReply_DiagEnable(uint8_t reply_data[], uint16_t reply_len);
 
     TimerHandle_t m_remoteCommandTimer;
     TimerHandle_t m_ccDisableTimer;
@@ -221,6 +224,7 @@ class OvmsVehicleNissanLeaf : public OvmsVehicle
     OvmsMetricInt *m_climate_fan_speed_limit;
     OvmsMetricFloat *m_climate_setpoint;
     OvmsMetricBool *m_climate_auto;
+    OvmsMetricBool *m_diag_mode;
     
     int    cfg_ev_request_port = DEFAULT_PIN_EV;        // EGPIO port number for EV SYSTEM ACTIVATION REQUEST
     int    cfg_allowed_rangedrop;                       // Allowed drop of range after charging
@@ -235,7 +239,7 @@ class OvmsVehicleNissanLeaf : public OvmsVehicle
     float   m_cum_energy_charge_wh;					// Cumulated energy (in wh) charged within 10 second ticker interval
     float   m_cum_energy_gen_wh;					  // Cumulated energy (in wh) exported within 10 second ticker interval
     bool    m_ZE0_charger;					        // True if 2011-2012 ZE0 LEAF with 0x380 message (Gen 1)
-	  bool    m_AZE0_charger;							    // True if 2013+ AZE0 LEAF with 0x390 message (Gen 2)
+    bool    m_AZE0_charger;							    // True if 2013+ AZE0 LEAF with 0x390 message (Gen 2)
     bool    m_climate_really_off;           // Needed for AZE0 to shown correct hvac status while charging
 
 
