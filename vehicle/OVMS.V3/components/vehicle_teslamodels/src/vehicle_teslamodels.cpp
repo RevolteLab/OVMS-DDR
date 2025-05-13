@@ -722,13 +722,29 @@ float getCapacity(const std::string& partNumber)
       {"1020422-00-A", 58.5f}  // 60 kWh, software lock to 60 kWh
     };
 
-    // Look up the part number in the map
-    auto it = capacities.find(partNumber);
+    // Try full part number first
+    std::unordered_map<std::string, float>::const_iterator it = capacities.find(partNumber);
     if (it != capacities.end()) {
-        return it->second; // Return the capacity if found
-    } else {
-        return 0.0f; // Return 0 if not found
+        return it->second;
     }
+
+    // Fallback: remove revision (after last dash)
+    size_t lastDash = partNumber.rfind('-');
+    if (lastDash == std::string::npos) {
+        return 0.0f; // No dash, can't fallback
+    }
+
+    std::string basePart = partNumber.substr(0, lastDash);
+
+    // Search for a part that starts with basePart + "-"
+    for (std::unordered_map<std::string, float>::const_iterator mit = capacities.begin(); mit != capacities.end(); ++mit) {
+        const std::string& key = mit->first;
+        if (key.compare(0, basePart.length() + 1, basePart + "-") == 0) {
+            return mit->second;
+        }
+    }
+
+    return 0.0f; // Not found
 }
   void OvmsVehicleTeslaModelS::UpdateSOH()
   {
